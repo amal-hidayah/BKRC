@@ -1,0 +1,17 @@
+# Local environment & sensitive files
+cookies.txt
+*.log
+.DS_Store
+Thumbs.db
+
+# Uploads and temporary assets
+/assets/proofs/*
+!/assets/proofs/.gitkeep
+/assets/uploads/*
+!/assets/uploads/.gitkeep
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
