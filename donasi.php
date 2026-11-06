@@ -84,19 +84,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $programTarget = !empty($old['program_target']) ? $old['program_target'] : 'Santunan Rutin Anak Yatim';
         $notes = $old['notes'];
 
-        // 9. Kelola Database Donatur (Pemisahan real_name internal vs display_name publik) (#27)
+        // 9. Kelola Database Donatur (Pencocokan akurat by phone mencegah kolisi nama yang sama)
         $stmtChk = $pdo->prepare("SELECT id FROM donors WHERE phone = ? LIMIT 1");
         $stmtChk->execute([$cleanPhone]);
         $donorId = $stmtChk->fetchColumn();
 
         if (!$donorId) {
-            $stmtChk2 = $pdo->prepare("SELECT id FROM donors WHERE full_name = ? LIMIT 1");
+            // Periksa jika ada profil bernama sama namun belum memiliki nomor WhatsApp
+            $stmtChk2 = $pdo->prepare("SELECT id FROM donors WHERE full_name = ? AND (phone = '' OR phone IS NULL) LIMIT 1");
             $stmtChk2->execute([$realName]);
             $donorId = $stmtChk2->fetchColumn();
+            if ($donorId) {
+                $updPhone = $pdo->prepare("UPDATE donors SET phone = ?, is_anonymous = ? WHERE id = ?");
+                $updPhone->execute([$cleanPhone, $isAnonymous, $donorId]);
+            }
         }
 
         if (!$donorId) {
-            $donorCode = 'DNR-' . date('ymd') . rand(10, 99);
+            $donorCode = 'DNR-' . date('ymd') . random_int(100, 999);
             $insD = $pdo->prepare("
                 INSERT INTO donors (donor_code, full_name, phone, cluster_or_address, donor_type, is_anonymous)
                 VALUES (?, ?, ?, 'Warga / Donatur Simpatisan', 'insidental', ?)
@@ -104,13 +109,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $insD->execute([$donorCode, $realName, $cleanPhone, $isAnonymous]);
             $donorId = $pdo->lastInsertId();
         } else {
-            // Perbarui nama asli dan status anonim terakhir
+            // Perbarui nama asli dan status anonim terakhir pada donatur terverifikasi
             $updD = $pdo->prepare("UPDATE donors SET full_name = ?, is_anonymous = ? WHERE id = ?");
             $updD->execute([$realName, $isAnonymous, $donorId]);
         }
 
-        // 10. Generate Nomor Referensi Donasi Sementara (TRX-YYYYMM-XXXX) (#12)
-        $trxRef = 'TRX-' . date('Ym') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        // 10. Generate Nomor Referensi Donasi Sementara (TRX-YYYYMM-XXXX) Terjamin Unik (#12)
+        $trxRef = generateUniqueTrxRef($pdo, 'TRX');
 
         $stmtDonation = $pdo->prepare("
             INSERT INTO donations (
@@ -332,7 +337,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <!-- Form Card -->
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-                    <form action="" method="POST" enctype="multipart/form-data" 
+                    <form action="" method="POST" 
                           x-data="donationFormLogic()" 
                           class="space-y-5" 
                           novalidate>

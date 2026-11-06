@@ -7,9 +7,25 @@ require_once __DIR__ . '/../config/helpers.php';
 requireAuth();
 $currentUser = currentUser();
 
-// Handle Tambah / Edit Agenda
+// Handle Tambah / Edit / Hapus Agenda
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        setFlash('error', 'Token keamanan CSRF tidak valid. Silakan muat ulang halaman.');
+        header('Location: ' . getBaseUrl() . '/admin/agendas.php');
+        exit;
+    }
+
     $action = $_POST['action'] ?? '';
+
+    if ($action === 'delete') {
+        $delId = (int)($_POST['id'] ?? 0);
+        $stmt = $pdo->prepare("DELETE FROM annual_agendas WHERE id = ?");
+        $stmt->execute([$delId]);
+        setFlash('success', 'Agenda berhasil dihapus.');
+        header('Location: ' . getBaseUrl() . '/admin/agendas.php');
+        exit;
+    }
+
     $year = (int)($_POST['year'] ?? date('Y'));
     $monthNum = (int)($_POST['month_num'] ?? 1);
     $monthLabel = trim($_POST['month_label'] ?? 'Januari');
@@ -42,16 +58,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . getBaseUrl() . '/admin/agendas.php');
         exit;
     }
-}
-
-// Handle Hapus
-if (isset($_GET['delete'])) {
-    $delId = (int)$_GET['delete'];
-    $stmt = $pdo->prepare("DELETE FROM annual_agendas WHERE id = ?");
-    $stmt->execute([$delId]);
-    setFlash('success', 'Agenda berhasil dihapus.');
-    header('Location: ' . getBaseUrl() . '/admin/agendas.php');
-    exit;
 }
 
 $agendas = $pdo->query("SELECT * FROM annual_agendas ORDER BY year DESC, month_num ASC")->fetchAll();
@@ -141,9 +147,14 @@ require_once __DIR__ . '/includes/sidebar.php';
                                         <button @click="isEdit = true; form = { id: '<?= $ag['id'] ?>', year: <?= $ag['year'] ?>, month_num: <?= $ag['month_num'] ?>, month_label: '<?= addslashes($ag['month_label']) ?>', title: '<?= addslashes($ag['title']) ?>', category: '<?= $ag['category'] ?>', description: '<?= addslashes($ag['description']) ?>', event_date: '<?= $ag['event_date'] ?>', status: '<?= $ag['status'] ?>' }; modalOpen = true" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold transition" title="Edit">
                                             <i class="fa-solid fa-pen-to-square"></i> Edit
                                         </button>
-                                        <a href="<?= getBaseUrl() ?>/admin/agendas.php?delete=<?= $ag['id'] ?>" onclick="return confirm('Hapus agenda ini?');" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition" title="Hapus">
-                                            <i class="fa-solid fa-trash text-xs"></i>
-                                        </a>
+                                        <form action="" method="POST" class="inline m-0 p-0" onsubmit="return confirm('Hapus agenda ini?');">
+                                            <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="id" value="<?= $ag['id'] ?>">
+                                            <button type="submit" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition" title="Hapus">
+                                                <i class="fa-solid fa-trash text-xs"></i>
+                                            </button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>
@@ -165,6 +176,7 @@ require_once __DIR__ . '/includes/sidebar.php';
             </div>
 
             <form action="" method="POST" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
                 <input type="hidden" name="action" :value="isEdit ? 'update' : 'create'">
                 <input type="hidden" name="id" :value="form.id">
 

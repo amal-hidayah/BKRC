@@ -23,10 +23,34 @@ try {
     $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
     $pdo = new PDO($dsn, DB_USER, DB_PASS, $pdo_options);
 } catch (PDOException $e) {
-    // Penanganan error jika database gagal terhubung
-    die("<div style='font-family: Arial, sans-serif; padding: 20px; background: #fee2e2; color: #991b1b; border: 1px solid #f87171; border-radius: 8px; max-width: 600px; margin: 40px auto;'>
-        <h3 style='margin-top: 0;'>Koneksi Database Gagal!</h3>
-        <p>Pastikan MySQL di XAMPP Control Panel sudah dalam keadaan <strong>Start</strong> dan database <code>db_bkrc</code> sudah diimpor.</p>
-        <p><small>Pesan Teknis: " . htmlspecialchars($e->getMessage()) . "</small></p>
-    </div>");
+    // Log pesan teknis ke error log server untuk audit internal (mencegah information disclosure ke publik)
+    error_log("BKRC Database Connection Error: " . $e->getMessage());
+    if (!headers_sent()) {
+        http_response_code(503);
+    }
+    die("<!DOCTYPE html>
+<html lang='id'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Layanan Dalam Pemeliharaan — BKRC</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f8fafc; color: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 36px 28px; max-width: 480px; text-align: center; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
+        .icon { width: 56px; height: 56px; line-height: 56px; background: #fee2e2; color: #991b1b; border-radius: 50%; font-size: 24px; font-weight: bold; margin: 0 auto 16px; }
+        h1 { font-size: 1.25rem; font-weight: 800; margin: 0 0 10px; color: #0f172a; }
+        p { font-size: 0.875rem; color: #64748b; line-height: 1.6; margin: 0 0 24px; }
+        .btn { display: inline-block; background: #991b1b; color: #fff; text-decoration: none; padding: 10px 24px; border-radius: 10px; font-size: 0.875rem; font-weight: 700; transition: background 0.2s; }
+        .btn:hover { background: #7f1d1d; }
+    </style>
+</head>
+<body>
+    <div class='card'>
+        <div class='icon'>!</div>
+        <h1>Layanan Sedang Dalam Pemeliharaan</h1>
+        <p>Sistem basis data saat ini sedang dalam proses pemeliharaan atau sedang mengalami beban tinggi. Mohon tunggu sejenak lalu muat ulang halaman.</p>
+        <a href='javascript:location.reload()' class='btn'>Muat Ulang Halaman</a>
+    </div>
+</body>
+</html>");
 }

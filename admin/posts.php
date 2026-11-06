@@ -7,9 +7,25 @@ require_once __DIR__ . '/../config/helpers.php';
 requireAuth();
 $currentUser = currentUser();
 
-// Handle Tambah / Edit Berita
+// Handle Tambah / Edit / Hapus Berita
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        setFlash('error', 'Token keamanan CSRF tidak valid. Silakan muat ulang halaman.');
+        header('Location: ' . getBaseUrl() . '/admin/posts.php');
+        exit;
+    }
+
     $action = $_POST['action'] ?? '';
+
+    if ($action === 'delete') {
+        $delId = (int)($_POST['id'] ?? 0);
+        $stmt = $pdo->prepare("DELETE FROM posts WHERE id = ?");
+        $stmt->execute([$delId]);
+        setFlash('success', 'Berita berhasil dihapus.');
+        header('Location: ' . getBaseUrl() . '/admin/posts.php');
+        exit;
+    }
+
     $title = trim($_POST['title'] ?? '');
     $excerpt = trim($_POST['excerpt'] ?? '');
     $content = trim($_POST['content'] ?? '');
@@ -81,16 +97,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . getBaseUrl() . '/admin/posts.php');
         exit;
     }
-}
-
-// Handle Hapus
-if (isset($_GET['delete'])) {
-    $delId = (int)$_GET['delete'];
-    $stmt = $pdo->prepare("DELETE FROM posts WHERE id = ?");
-    $stmt->execute([$delId]);
-    setFlash('success', 'Berita berhasil dihapus.');
-    header('Location: ' . getBaseUrl() . '/admin/posts.php');
-    exit;
 }
 
 $posts = $pdo->query("
@@ -208,9 +214,14 @@ require_once __DIR__ . '/includes/sidebar.php';
                                             <button @click="openEdit({ id: '<?= $p['id'] ?>', title: '<?= addslashes($p['title']) ?>', excerpt: '<?= addslashes($p['excerpt'] ?? '') ?>', content: '<?= addslashes(str_replace(["\r", "\n"], ['\\r', '\\n'], $p['content'])) ?>', thumbnail_url: '<?= addslashes($p['thumbnail_url'] ?? '') ?>', event_date: '<?= $p['event_date'] ?>' })" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition" title="Edit Berita">
                                                 <i class="fa-solid fa-pen-to-square text-xs"></i>
                                             </button>
-                                            <a href="<?= getBaseUrl() ?>/admin/posts.php?delete=<?= $p['id'] ?>" onclick="return confirm('Hapus berita ini?');" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 transition" title="Hapus Berita">
-                                                <i class="fa-solid fa-trash text-xs"></i>
-                                            </a>
+                                            <form action="" method="POST" class="inline m-0 p-0" onsubmit="return confirm('Hapus berita ini?');">
+                                                <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="id" value="<?= $p['id'] ?>">
+                                                <button type="submit" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 transition" title="Hapus Berita">
+                                                    <i class="fa-solid fa-trash text-xs"></i>
+                                                </button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>
@@ -233,6 +244,7 @@ require_once __DIR__ . '/includes/sidebar.php';
             </div>
 
             <form action="" method="POST" enctype="multipart/form-data" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
                 <input type="hidden" name="action" :value="isEdit ? 'update' : 'create'">
                 <input type="hidden" name="id" :value="form.id">
 

@@ -512,7 +512,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 $maskedPhone = maskPhone($phone);
 
                                 // WhatsApp Link untuk mengirim kwitansi (untuk approved)
-                                $receiptUrl = getBaseUrl() . '/print_receipt.php?id=' . $d['id'];
+                                $receiptUrl = getReceiptUrl($d['id'], $d['receipt_no'], $d['created_at']);
                                 $waKwitansiText = "Assalamualaikum Bpk/Ibu {$displayName},\n\n"
                                     . "Alhamdulillah, pembayaran " . ($isIuran ? "Iuran Kas Bulanan Anggota" : "Donasi Sukarela") . " Anda telah diverifikasi oleh Bendahara BKRC.\n\n"
                                     . "📌 No. Kwitansi: {$d['receipt_no']}\n"
@@ -671,7 +671,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                 </button>
                                             <?php elseif ($isApproved): ?>
                                                 <!-- Cetak Kwitansi -->
-                                                <a href="<?= getBaseUrl() ?>/print_receipt.php?id=<?= $d['id'] ?>" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition border border-slate-200 shadow-2xs" title="Cetak Kwitansi PDF">
+                                                <a href="<?= getReceiptUrl($d['id'], $d['receipt_no'], $d['created_at']) ?>" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition border border-slate-200 shadow-2xs" title="Cetak Kwitansi PDF">
                                                     <i class="fa-solid fa-print text-slate-400"></i> <span class="hidden sm:inline">Kwitansi</span>
                                                 </a>
 

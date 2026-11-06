@@ -10,6 +10,20 @@ $success = false;
 $submittedData = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // 1. Validasi Honeypot Anti-Bot Spam
+    if (!empty($_POST['bkr_web_hp'])) {
+        header('Location: ' . getBaseUrl() . '/daftar_anggota.php');
+        exit;
+    }
+
+    // 2. Proteksi Rate Limiting (Minimal 4 detik antar submit)
+    $lastSubmit = $_SESSION['last_member_reg_time'] ?? 0;
+    if (time() - $lastSubmit < 4) {
+        setFlash('error', 'Mohon tunggu beberapa detik sebelum mengirimkan formulir kembali.');
+        header('Location: ' . getBaseUrl() . '/daftar_anggota.php');
+        exit;
+    }
+
     $csrfToken = $_POST['csrf_token'] ?? '';
     if (!verifyCsrfToken($csrfToken)) {
         setFlash('error', 'Token keamanan kedaluwarsa. Silakan ulangi pengisian formulir.');
@@ -60,7 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 // Auto-generate nomor antrean registrasi pendaftaran mandiri (Opsi B)
                 $prefix = 'REG-' . date('Ym') . '-';
-                $stmtLastReg = $pdo->query("SELECT member_code FROM members WHERE member_code LIKE '{$prefix}%' ORDER BY id DESC LIMIT 1");
+                $stmtLastReg = $pdo->prepare("SELECT member_code FROM members WHERE member_code LIKE ? ORDER BY id DESC LIMIT 1");
+                $stmtLastReg->execute([$prefix . '%']);
                 $lastReg = $stmtLastReg->fetchColumn();
                 if ($lastReg) {
                     $num = (int)substr($lastReg, strlen($prefix));
@@ -77,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$regCode, $nik, $fullName, $phone, $clusterBlock, $rtRw, $interest]);
                 $newId = $pdo->lastInsertId();
 
+                $_SESSION['last_member_reg_time'] = time();
                 $success = true;
                 $submittedData = [
                     'id' => $newId,
@@ -190,6 +206,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <form action="" method="POST" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                <div style="display:none !important;" aria-hidden="true">
+                    <input type="text" name="bkr_web_hp" value="" tabindex="-1" autocomplete="off">
+                </div>
 
                 <!-- Nama Lengkap -->
                 <div>

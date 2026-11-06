@@ -10,9 +10,29 @@ $currentUser = currentUser();
 // Proteksi: Khusus Super Admin
 requireSuperAdmin();
 
-// Handle Tambah / Edit Pengurus
+// Handle Tambah / Edit / Hapus Pengurus
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        setFlash('error', 'Token keamanan CSRF tidak valid. Silakan muat ulang halaman.');
+        header('Location: ' . getBaseUrl() . '/admin/users.php');
+        exit;
+    }
+
     $action = $_POST['action'] ?? '';
+
+    if ($action === 'delete') {
+        $delId = (int)($_POST['id'] ?? 0);
+        if ($delId === (int)$currentUser['id']) {
+            setFlash('error', 'Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif!');
+        } else {
+            $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
+            $stmt->execute([$delId]);
+            setFlash('success', 'Akun pengurus berhasil dihapus.');
+        }
+        header('Location: ' . getBaseUrl() . '/admin/users.php');
+        exit;
+    }
+
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $role = $_POST['role'] ?? 'admin';
@@ -53,20 +73,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . getBaseUrl() . '/admin/users.php');
         exit;
     }
-}
-
-// Handle Hapus
-if (isset($_GET['delete'])) {
-    $delId = (int)$_GET['delete'];
-    if ($delId === (int)$currentUser['id']) {
-        setFlash('error', 'Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif!');
-    } else {
-        $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
-        $stmt->execute([$delId]);
-        setFlash('success', 'Akun pengurus berhasil dihapus.');
-    }
-    header('Location: ' . getBaseUrl() . '/admin/users.php');
-    exit;
 }
 
 $users = $pdo->query("SELECT * FROM users ORDER BY role ASC, name ASC")->fetchAll();
@@ -156,9 +162,14 @@ require_once __DIR__ . '/includes/sidebar.php';
                                             <i class="fa-solid fa-pen-to-square"></i> Edit
                                         </button>
                                         <?php if ($u['id'] !== $currentUser['id']): ?>
-                                            <a href="<?= getBaseUrl() ?>/admin/users.php?delete=<?= $u['id'] ?>" onclick="return confirm('Hapus akun pengurus ini?');" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition" title="Hapus">
-                                                <i class="fa-solid fa-trash text-xs"></i>
-                                            </a>
+                                            <form action="" method="POST" class="inline m-0 p-0" onsubmit="return confirm('Hapus akun pengurus ini?');">
+                                                <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                                                <button type="submit" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition" title="Hapus">
+                                                    <i class="fa-solid fa-trash text-xs"></i>
+                                                </button>
+                                            </form>
                                         <?php endif; ?>
                                     </div>
                                 </td>
@@ -181,6 +192,7 @@ require_once __DIR__ . '/includes/sidebar.php';
             </div>
 
             <form action="" method="POST" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
                 <input type="hidden" name="action" :value="isEdit ? 'update' : 'create'">
                 <input type="hidden" name="id" :value="form.id">
 

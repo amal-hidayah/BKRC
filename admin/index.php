@@ -414,7 +414,7 @@ $recentEvents = $pdo->query("
                                         <?= $d['type'] === 'uang' ? formatRupiah($d['amount']) : number_format($d['package_qty']) . ' Paket' ?>
                                     </td>
                                     <td class="py-3 px-3 text-center whitespace-nowrap">
-                                        <a href="<?= getBaseUrl() ?>/print_receipt.php?id=<?= $d['id'] ?>" target="_blank" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition" title="Cetak Kwitansi">
+                                        <a href="<?= getReceiptUrl($d['id'], $d['receipt_no'], $d['created_at']) ?>" target="_blank" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition" title="Cetak Kwitansi">
                                             <i class="fa-solid fa-print text-xs"></i>
                                         </a>
                                     </td>

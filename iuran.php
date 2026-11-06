@@ -91,13 +91,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $programTarget = 'Iuran Kas Bulanan Anggota';
         $notes = $old['notes'];
 
-        // Cari atau hubungkan profil donor
-        $stmtChk = $pdo->prepare("SELECT id FROM donors WHERE full_name = ? LIMIT 1");
-        $stmtChk->execute([$memberName]);
+        // Cari atau hubungkan profil donatur secara aman (pencocokan nomor WhatsApp terlebih dahulu)
+        $stmtChk = $pdo->prepare("SELECT id FROM donors WHERE phone = ? LIMIT 1");
+        $stmtChk->execute([$cleanPhone]);
         $donorId = $stmtChk->fetchColumn();
 
         if (!$donorId) {
-            $donorCode = 'DNR-' . date('ymd') . rand(10, 99);
+            // Jika belum ada berdasarkan phone, periksa bila ada profil bernama sama yang nomor phone-nya belum tercatat
+            $stmtChk2 = $pdo->prepare("SELECT id FROM donors WHERE full_name = ? AND (phone = '' OR phone IS NULL) LIMIT 1");
+            $stmtChk2->execute([$memberName]);
+            $donorId = $stmtChk2->fetchColumn();
+            if ($donorId) {
+                $updPhone = $pdo->prepare("UPDATE donors SET phone = ? WHERE id = ?");
+                $updPhone->execute([$cleanPhone, $donorId]);
+            }
+        }
+
+        if (!$donorId) {
+            $donorCode = 'DNR-' . date('ymd') . random_int(100, 999);
             $insD = $pdo->prepare("
                 INSERT INTO donors (donor_code, full_name, phone, cluster_or_address, donor_type, is_anonymous)
                 VALUES (?, ?, ?, ?, 'rutin', 0)
@@ -106,8 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $donorId = $pdo->lastInsertId();
         }
 
-        // Nomor Referensi Transaksi
-        $trxRef = 'TRX-' . date('Ym') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        // Nomor Referensi Transaksi Terjamin Unik (Bebas Kolisi)
+        $trxRef = generateUniqueTrxRef($pdo, 'TRX');
 
         $stmtIns = $pdo->prepare("
             INSERT INTO donations (
@@ -310,7 +321,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
 
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-                    <form action="" method="POST" enctype="multipart/form-data" 
+                    <form action="" method="POST" 
                           x-data="iuranFormLogic()" 
                           class="space-y-5" 
                           novalidate>
@@ -333,9 +344,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <option value="">-- Pilih dari Daftar Anggota Resmi --</option>
                                 <?php foreach ($activeMembers as $mem): ?>
                                     <option value="<?= $mem['id'] ?>" 
-                                            data-phone="<?= htmlspecialchars($mem['phone']) ?>" 
                                             <?= ($old['member_id'] ?? 0) == $mem['id'] ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($mem['full_name']) ?> (<?= htmlspecialchars($mem['member_code']) ?> · <?= htmlspecialchars($mem['cluster_block']) ?>)
+                                        <?= htmlspecialchars($mem['full_name']) ?> (<?= htmlspecialchars($mem['member_code']) ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -498,10 +508,7 @@ function iuranFormLogic() {
             }
         },
         onMemberSelect(e) {
-            const opt = e.target.selectedOptions[0];
-            if (opt && opt.dataset.phone && !this.memberPhone) {
-                this.memberPhone = opt.dataset.phone;
-            }
+            // Member memasukkan nomor WhatsApp secara mandiri demi kepatuhan UU PDP
         },
         selectChip(val) {
             this.selectedChip = val;

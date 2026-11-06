@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500 pointer-events-none">
                             <i class="fa-regular fa-envelope"></i>
                         </span>
-                        <input type="email" id="email" name="email" required value="<?= htmlspecialchars($_POST['email'] ?? 'admin@bkrc.id') ?>" placeholder="nama@bkrc.id" class="w-full pl-10 pr-4 py-3 min-h-[44px] bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm placeholder:text-slate-500 text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:bg-white transition">
+                        <input type="email" id="email" name="email" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" placeholder="nama@bkrc.id" class="w-full pl-10 pr-4 py-3 min-h-[44px] bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm placeholder:text-slate-500 text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:bg-white transition">
                     </div>
                 </div>
 
@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500 pointer-events-none">
                             <i class="fa-solid fa-lock"></i>
                         </span>
-                        <input type="password" id="password" name="password" required value="admin123" placeholder="••••••••" class="w-full pl-10 pr-4 py-3 min-h-[44px] bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm placeholder:text-slate-500 text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:bg-white transition">
+                        <input type="password" id="password" name="password" required placeholder="••••••••" class="w-full pl-10 pr-4 py-3 min-h-[44px] bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm placeholder:text-slate-500 text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:bg-white transition">
                     </div>
                 </div>
 

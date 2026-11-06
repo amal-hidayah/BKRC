@@ -529,3 +529,81 @@ function getKasSummary($pdo, $year = null) {
         'total_donatur' => $totalDonatur
     ];
 }
+
+/**
+ * Konversi Angka ke Kata Terbilang Rupiah Bahasa Indonesia
+ * Rekursi bersih tanpa perulangan kata 'rupiah' di level internal.
+ */
+function bilangKata($nilai) {
+    $nilai = abs((float)$nilai);
+    $huruf = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
+    $temp = '';
+    if ($nilai <= 0) {
+        return '';
+    } elseif ($nilai < 12) {
+        $temp = ' ' . $huruf[(int)$nilai];
+    } elseif ($nilai < 20) {
+        $temp = bilangKata($nilai - 10) . ' belas';
+    } elseif ($nilai < 100) {
+        $temp = bilangKata((int)($nilai / 10)) . ' puluh' . bilangKata((int)$nilai % 10);
+    } elseif ($nilai < 200) {
+        $temp = ' seratus' . bilangKata($nilai - 100);
+    } elseif ($nilai < 1000) {
+        $temp = bilangKata((int)($nilai / 100)) . ' ratus' . bilangKata((int)$nilai % 100);
+    } elseif ($nilai < 2000) {
+        $temp = ' seribu' . bilangKata($nilai - 1000);
+    } elseif ($nilai < 1000000) {
+        $temp = bilangKata((int)($nilai / 1000)) . ' ribu' . bilangKata(fmod($nilai, 1000));
+    } elseif ($nilai < 1000000000) {
+        $temp = bilangKata((int)($nilai / 1000000)) . ' juta' . bilangKata(fmod($nilai, 1000000));
+    } elseif ($nilai < 1000000000000) {
+        $temp = bilangKata((int)($nilai / 1000000000)) . ' milyar' . bilangKata(fmod($nilai, 1000000000));
+    } elseif ($nilai < 1000000000000000) {
+        $temp = bilangKata((int)($nilai / 1000000000000)) . ' triliun' . bilangKata(fmod($nilai, 1000000000000));
+    }
+    return $temp;
+}
+
+function terbilang($angka) {
+    $angka = (float)$angka;
+    if ($angka == 0) {
+        return 'Nol rupiah';
+    }
+    $hasil = preg_replace('/\s+/', ' ', trim(bilangKata($angka)));
+    return ucfirst($hasil) . ' rupiah';
+}
+
+/**
+ * Generate Nomor Referensi Transaksi Unik (TRX-YYYYMM-XXXX)
+ * Dilengkapi pengecekan duplikasi ke database untuk menghindari collision.
+ */
+function generateUniqueTrxRef($pdo, $prefix = 'TRX') {
+    $ym = date('Ym');
+    for ($i = 0; $i < 20; $i++) {
+        $code = $prefix . '-' . $ym . '-' . str_pad((string)random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM donations WHERE receipt_no = ?");
+        $stmt->execute([$code]);
+        if ((int)$stmt->fetchColumn() === 0) {
+            return $code;
+        }
+    }
+    // Fallback digit tambahan jika kuota 4 digit penuh
+    return $prefix . '-' . $ym . '-' . random_int(10000, 99999);
+}
+
+/**
+ * Keamanan Kwitansi: Token HMAC Unguessable untuk Proteksi ID Enumeration (CWE-639)
+ */
+function getReceiptSecurityToken($donationId, $receiptNo = '', $createdAt = '') {
+    $secretSalt = 'BKRC_SECURE_RECEIPT_SALT_2026_PROTECT';
+    $payload = "{$donationId}:{$receiptNo}:{$createdAt}:{$secretSalt}";
+    return substr(hash('sha256', $payload), 0, 16);
+}
+
+/**
+ * Generate Tautan Cetak Kwitansi Resmi Dilengkapi Token Pengaman
+ */
+function getReceiptUrl($donationId, $receiptNo = '', $createdAt = '') {
+    $token = getReceiptSecurityToken($donationId, $receiptNo, $createdAt);
+    return getBaseUrl() . '/print_receipt.php?id=' . (int)$donationId . '&key=' . $token;
+}

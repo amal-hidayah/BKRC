@@ -214,7 +214,7 @@ $events = $stmtEvents->fetchAll();
                                 </td>
                                 <td class="py-3.5 px-4 text-xs text-slate-600"><?= htmlspecialchars($d['program_target']) ?></td>
                                 <td class="py-3.5 px-4 text-center whitespace-nowrap">
-                                    <a href="<?= getBaseUrl() ?>/print_receipt.php?id=<?= $d['id'] ?>" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition" title="Lihat Kwitansi Resmi">
+                                    <a href="<?= getReceiptUrl($d['id'], $d['receipt_no'], $d['created_at']) ?>" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition" title="Lihat Kwitansi Resmi">
                                         <i class="fa-solid fa-receipt text-slate-500"></i> Bukti
                                     </a>
                                 </td>

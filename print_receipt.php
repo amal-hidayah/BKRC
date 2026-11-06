@@ -26,42 +26,26 @@ if (!$donation) {
     die("Kwitansi tidak ditemukan atau tautan tidak valid.");
 }
 
-// Keamanan: Jika kwitansi belum approved / masih pending / void, hanya admin yang boleh melihat
+// Proteksi Keamanan: Anti-Enumeration & Kontrol Akses (CWE-639)
+// 1. Jika kwitansi belum approved, hanya pengurus yang login boleh membuka
 if ($donation['status'] !== 'approved' && !isLoggedIn()) {
     requireAuth();
+}
+
+// 2. Jika diakses oleh publik tanpa sesi login, WAJIB menyertakan valid security key
+if (!isLoggedIn()) {
+    $expectedKey = getReceiptSecurityToken($donation['id'], $donation['receipt_no'], $donation['created_at'] ?? '');
+    $providedKey = trim($_GET['key'] ?? '');
+    if (empty($providedKey) || !hash_equals($expectedKey, $providedKey)) {
+        // Kunci token tidak valid atau tidak disertakan -> wajib login untuk mencegah enumerasi
+        requireAuth();
+    }
 }
 
 $isUang = ($donation['type'] === 'uang');
 $isIuran = ($donation['transaction_category'] === 'iuran');
 $donorName = $donation['is_anonymous'] ? 'Hamba Allah' : ($isIuran && !empty($donation['member_name']) ? $donation['member_name'] : $donation['donor_name']);
 $addressDisplay = $isIuran && !empty($donation['member_block']) ? 'Blok ' . $donation['member_block'] . ' (Anggota)' : ($donation['cluster_or_address'] ?: 'Warga Cluster');
-
-
-// Algoritma Terbilang Rupiah Sederhana
-function terbilang($angka) {
-    $angka = abs((float)$angka);
-    $baca = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas"];
-    $terbilang = "";
-
-    if ($angka < 12) {
-        $terbilang = " " . $baca[$angka];
-    } elseif ($angka < 20) {
-        $terbilang = terbilang($angka - 10) . " belas";
-    } elseif ($angka < 100) {
-        $terbilang = terbilang(floor($angka / 10)) . " puluh" . terbilang($angka % 10);
-    } elseif ($angka < 200) {
-        $terbilang = " seratus" . terbilang($angka - 100);
-    } elseif ($angka < 1000) {
-        $terbilang = terbilang(floor($angka / 100)) . " ratus" . terbilang($angka % 100);
-    } elseif ($angka < 2000) {
-        $terbilang = " seribu" . terbilang($angka - 1000);
-    } elseif ($angka < 1000000) {
-        $terbilang = terbilang(floor($angka / 1000)) . " ribu" . terbilang($angka % 1000);
-    } elseif ($angka < 1000000000) {
-        $terbilang = terbilang(floor($angka / 1000000)) . " juta" . terbilang($angka % 1000000);
-    }
-    return ucfirst(trim($terbilang)) . " rupiah";
-}
 ?>
 <!DOCTYPE html>
 <html lang="id">
