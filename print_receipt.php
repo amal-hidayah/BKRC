@@ -58,90 +58,79 @@ $addressDisplay = $isIuran && !empty($donation['member_block']) ? 'Blok ' . $don
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #f1f5f9;
+            background-color: #faf8f5;
             margin: 0;
             padding: 40px 20px;
-            color: #1e293b;
+            color: #1c1917;
         }
         .receipt-card {
-            max-width: 750px;
+            max-width: 720px;
             margin: 0 auto;
             background: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+            border: 1px solid #e7e5e4;
             position: relative;
             overflow: hidden;
-            padding: 40px;
+            padding: 36px;
         }
         .top-stripe {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 6px;
-            background: #991b1b;
+            height: 4px;
+            background: #8b1e1e;
         }
         .kop {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 2px solid #cbd5e1;
+            border-bottom: 1px solid #e7e5e4;
             padding-bottom: 20px;
-            margin-bottom: 25px;
+            margin-bottom: 24px;
         }
         .logo-box {
             display: flex;
             align-items: center;
-            gap: 15px;
-        }
-        .logo-circle {
-            width: 55px;
-            height: 55px;
-            border-radius: 14px;
-            background: #991b1b;
-            color: #fbbf24;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 24px;
+            gap: 14px;
         }
         .org-name {
-            font-size: 20px;
-            font-weight: 800;
-            color: #7f1d1d;
-            letter-spacing: -0.5px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #8b1e1e;
+            letter-spacing: -0.3px;
         }
         .org-sub {
             font-size: 11px;
-            color: #64748b;
-            font-weight: 500;
+            color: #78716c;
+            font-weight: 400;
+            margin-top: 1px;
         }
         .receipt-meta {
             text-align: right;
         }
         .receipt-badge {
             display: inline-block;
-            background: #fee2e2;
-            color: #991b1b;
+            background: #fef2f2;
+            color: #8b1e1e;
+            border: 1px solid #fecaca;
             font-size: 11px;
-            font-weight: 800;
-            padding: 4px 10px;
+            font-medium: 600;
+            padding: 3px 10px;
             border-radius: 999px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
         }
         .receipt-no {
             font-family: 'Space Mono', monospace;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 700;
-            color: #0f172a;
+            color: #1c1917;
         }
         .receipt-date {
             font-size: 11px;
-            color: #64748b;
+            color: #78716c;
+            margin-top: 2px;
         }
         .table-data {
             width: 100%;
@@ -150,85 +139,88 @@ $addressDisplay = $isIuran && !empty($donation['member_block']) ? 'Blok ' . $don
             font-size: 13px;
         }
         .table-data td {
-            padding: 10px 6px;
+            padding: 8px 6px;
             vertical-align: top;
         }
         .table-data td.label {
             width: 160px;
-            font-weight: 600;
-            color: #64748b;
+            font-weight: 500;
+            color: #78716c;
         }
         .table-data td.colon {
             width: 15px;
-            font-weight: 700;
-            color: #94a3b8;
+            font-weight: 500;
+            color: #a8a29e;
         }
         .table-data td.value {
-            color: #0f172a;
+            color: #1c1917;
             font-weight: 600;
         }
         .amount-box {
-            background: #f8fafc;
-            border: 2px dashed #cbd5e1;
-            border-radius: 12px;
-            padding: 18px 24px;
-            margin: 25px 0;
+            background: #faf8f5;
+            border: 1px dashed #d6d3d1;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 24px 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .amount-val {
             font-family: 'Space Mono', monospace;
-            font-size: 26px;
+            font-size: 22px;
             font-weight: 700;
-            color: #047857;
+            color: #8b1e1e;
         }
         .amount-words {
             font-size: 12px;
             font-style: italic;
-            color: #475569;
+            color: #57534e;
             margin-top: 4px;
         }
         .footer-sig {
             display: flex;
             justify-content: space-between;
-            margin-top: 40px;
+            margin-top: 36px;
             padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid #e7e5e4;
             font-size: 12px;
         }
         .sig-col {
             text-align: center;
-            width: 200px;
+            width: 190px;
         }
         .sig-space {
-            height: 60px;
+            height: 56px;
         }
         .sig-name {
-            font-weight: 700;
-            color: #0f172a;
-            border-bottom: 1px solid #94a3b8;
+            font-weight: 600;
+            color: #1c1917;
+            border-bottom: 1px solid #a8a29e;
             padding-bottom: 2px;
         }
         .sig-title {
-            color: #64748b;
+            color: #78716c;
             font-size: 11px;
             margin-top: 3px;
         }
         .btn-print {
             display: block;
-            max-width: 200px;
+            max-width: 180px;
             margin: 20px auto 0;
-            background: #991b1b;
+            background: #8b1e1e;
             color: white;
             text-align: center;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-weight: 700;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
             font-size: 13px;
             cursor: pointer;
-            text-decoration: none;
-            box-shadow: 0 4px 12px rgba(153, 27, 27, 0.2);
+            border: none;
+            transition: background 0.2s;
+        }
+        .btn-print:hover {
+            background: #731717;
         }
         @media print {
             body { background: white; padding: 0; }

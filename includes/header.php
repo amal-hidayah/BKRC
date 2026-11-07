@@ -29,25 +29,35 @@ $pageTitle = $pageTitle ?? 'Sistem Informasi Manajemen & Portal Transparansi BKR
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        mono: ['"Space Mono"', 'monospace']
                     },
                     colors: {
+                        stone: {
+                            50: '#faf8f5',
+                            100: '#f5f2eb',
+                            200: '#e7e2d7',
+                            300: '#d5cdbf',
+                            400: '#a89f91',
+                            500: '#78716c',
+                            600: '#57534e',
+                            700: '#44403c',
+                            800: '#292524',
+                            900: '#1c1917',
+                            950: '#0c0a09'
+                        },
                         bkrc: {
+                            crimson: '#8b1e1e',
+                            crimsonDark: '#701616',
+                            crimsonLight: '#fdf2f2',
                             red: {
-                                50: '#fef2f2',
-                                100: '#fee2e2',
-                                600: '#dc2626',
-                                700: '#b91c1c',
-                                800: '#991b1b',
-                                900: '#7f1d1d',
-                                950: '#450a0a'
-                            },
-                            gold: {
-                                100: '#fef3c7',
-                                400: '#fbbf24',
-                                500: '#f59e0b',
-                                600: '#d97706',
-                                700: '#b45309'
+                                50: '#fdf2f2',
+                                100: '#fde4e4',
+                                600: '#c52828',
+                                700: '#a31f1f',
+                                800: '#8b1e1e',
+                                900: '#701616',
+                                950: '#400909'
                             }
                         }
                     }
@@ -66,33 +76,33 @@ $pageTitle = $pageTitle ?? 'Sistem Informasi Manajemen & Portal Transparansi BKR
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased flex flex-col min-h-screen">
+<body class="bg-[#faf8f5] text-stone-900 font-sans antialiased flex flex-col min-h-screen selection:bg-stone-200 selection:text-stone-900">
 
     <?php if (empty($hideTopBar) && !in_array($currentPath, ['donasi.php', 'iuran.php'])): ?>
-    <!-- Top Announcement Bar (Disembunyikan di halaman form agar header ramping #29) -->
-    <div class="bg-slate-900 text-slate-300 text-xs py-2 px-4 border-b border-slate-800">
+    <!-- Top Announcement Bar (Quiet, Monochromatic, Informative) -->
+    <div class="bg-stone-900 text-stone-300 text-xs py-2 px-4 border-b border-stone-800">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
             <div class="flex items-center gap-2 text-center sm:text-left">
-                <span class="text-amber-400 font-semibold">BKRC</span>
-                <span class="text-slate-500 hidden sm:inline">&bull;</span>
-                <span class="text-slate-200 font-medium">Bantuan Kemanusiaan Relawan Cluster</span>
+                <span class="text-stone-100 font-semibold tracking-wide">BKRC</span>
+                <span class="text-stone-600 hidden sm:inline">&bull;</span>
+                <span class="text-stone-300">Bantuan Kemanusiaan Relawan Cluster</span>
             </div>
-            <div class="flex items-center gap-3 text-slate-300">
-                <span class="hidden md:inline-flex items-center gap-1.5 text-slate-400">
-                    <i class="fa-solid fa-location-dot text-[11px] text-amber-400"></i> Posko: Pendopo Cluster
+            <div class="flex items-center gap-4 text-stone-400">
+                <span class="hidden md:inline-flex items-center gap-1.5 text-stone-300">
+                    <i class="fa-solid fa-location-dot text-[11px] text-stone-400"></i> Posko Pendopo Cluster
                 </span>
-                <span class="hidden md:inline text-slate-700" aria-hidden="true">|</span>
-                <a href="https://wa.me/6281234567891" target="_blank" rel="noopener noreferrer" class="hover:text-white transition inline-flex items-center gap-1.5 py-1 px-2 rounded focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none">
-                    <i class="fa-brands fa-whatsapp text-[12px] text-emerald-400"></i> 0812-3456-7891
+                <span class="hidden md:inline text-stone-700" aria-hidden="true">&bull;</span>
+                <a href="https://wa.me/6281234567891" target="_blank" rel="noopener noreferrer" class="hover:text-stone-100 transition inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:underline">
+                    <i class="fa-brands fa-whatsapp text-[12px] text-stone-400"></i> 0812-3456-7891
                 </a>
-                <span class="text-slate-700" aria-hidden="true">|</span>
+                <span class="text-stone-700" aria-hidden="true">&bull;</span>
                 <?php if (isLoggedIn()): ?>
-                    <a href="<?= getBaseUrl() ?>/admin/index.php" class="text-amber-400 font-semibold hover:underline inline-flex items-center gap-1.5 py-1 px-2 rounded focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none">
+                    <a href="<?= getBaseUrl() ?>/admin/index.php" class="text-stone-200 hover:text-white font-medium hover:underline inline-flex items-center gap-1">
                         Dashboard
                     </a>
                 <?php else: ?>
-                    <a href="<?= getBaseUrl() ?>/login.php" class="hover:text-white transition inline-flex items-center gap-1.5 py-1 px-2 rounded focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none">
-                        Login Pengurus
+                    <a href="<?= getBaseUrl() ?>/login.php" class="text-stone-400 hover:text-stone-200 transition">
+                        Login pengurus
                     </a>
                 <?php endif; ?>
             </div>
@@ -100,81 +110,81 @@ $pageTitle = $pageTitle ?? 'Sistem Informasi Manajemen & Portal Transparansi BKR
     </div>
     <?php endif; ?>
 
-    <!-- Main Navigation Bar (Clean solid surface, no excessive blur) -->
-    <nav class="bg-white sticky top-0 z-50 border-b border-slate-200" x-data="{ mobileOpen: false }" @keydown.escape.window="mobileOpen = false">
+    <!-- Main Navigation Bar (Clean solid surface, quiet chrome) -->
+    <nav class="bg-white/95 backdrop-blur-xs sticky top-0 z-50 border-b border-stone-200/80" x-data="{ mobileOpen: false }" @keydown.escape.window="mobileOpen = false">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-20 items-center">
+            <div class="flex justify-between h-16 sm:h-18 items-center">
                 <!-- Brand / Logo -->
-                <a href="<?= getBaseUrl() ?>/index.php" class="flex items-center gap-3 group focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:outline-none rounded-xl p-1">
-                    <img src="<?= getBaseUrl() ?>/assets/img/logo.png" alt="Logo BKRC" class="w-10 h-10 object-contain flex-shrink-0">
+                <a href="<?= getBaseUrl() ?>/index.php" class="flex items-center gap-3 group focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:outline-none rounded-lg p-1">
+                    <img src="<?= getBaseUrl() ?>/assets/img/logo.png" alt="Logo BKRC" class="w-9 h-9 object-contain flex-shrink-0">
                     <div>
-                        <div class="font-bold text-lg tracking-tight text-slate-900 group-hover:text-red-700 transition leading-none">BKRC</div>
-                        <div class="text-xs text-slate-500 font-medium mt-1">Relawan Warga Cluster</div>
+                        <div class="font-semibold text-base tracking-tight text-stone-900 group-hover:text-stone-700 transition leading-none">BKRC</div>
+                        <div class="text-[11px] text-stone-500 mt-1">Relawan Warga Cluster</div>
                     </div>
                 </a>
 
-                <!-- Desktop Menu (Clean, Concise, No Clutter) -->
-                <div class="hidden md:flex items-center gap-2 sm:gap-4">
-                    <a href="<?= getBaseUrl() ?>/index.php" class="px-2 py-2 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:outline-none <?= $currentPath === 'index.php' ? 'text-bkrc-red-800 font-bold border-b-2 border-bkrc-red-800' : 'text-slate-700 hover:text-bkrc-red-800' ?>">
+                <!-- Desktop Menu (Sentence case, subtle active marker, calm spacing) -->
+                <div class="hidden md:flex items-center gap-1 lg:gap-2">
+                    <a href="<?= getBaseUrl() ?>/index.php" class="px-3 py-1.5 text-xs font-medium rounded-lg transition <?= $currentPath === 'index.php' ? 'text-stone-900 bg-stone-100 font-semibold' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50' ?>">
                         Beranda
                     </a>
-                    <a href="<?= getBaseUrl() ?>/agenda.php" class="px-2 py-2 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:outline-none <?= $currentPath === 'agenda.php' ? 'text-bkrc-red-800 font-bold border-b-2 border-bkrc-red-800' : 'text-slate-700 hover:text-bkrc-red-800' ?>">
+                    <a href="<?= getBaseUrl() ?>/agenda.php" class="px-3 py-1.5 text-xs font-medium rounded-lg transition <?= $currentPath === 'agenda.php' ? 'text-stone-900 bg-stone-100 font-semibold' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50' ?>">
                         Agenda
                     </a>
-                    <a href="<?= getBaseUrl() ?>/transparansi.php" class="px-2 py-2 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:outline-none <?= $currentPath === 'transparansi.php' ? 'text-bkrc-red-800 font-bold border-b-2 border-bkrc-red-800' : 'text-slate-700 hover:text-bkrc-red-800' ?>">
+                    <a href="<?= getBaseUrl() ?>/transparansi.php" class="px-3 py-1.5 text-xs font-medium rounded-lg transition <?= $currentPath === 'transparansi.php' ? 'text-stone-900 bg-stone-100 font-semibold' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50' ?>">
                         Transparansi
                     </a>
-                    <a href="<?= getBaseUrl() ?>/berita.php" class="px-2 py-2 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:outline-none <?= $currentPath === 'berita.php' ? 'text-bkrc-red-800 font-bold border-b-2 border-bkrc-red-800' : 'text-slate-700 hover:text-bkrc-red-800' ?>">
+                    <a href="<?= getBaseUrl() ?>/berita.php" class="px-3 py-1.5 text-xs font-medium rounded-lg transition <?= $currentPath === 'berita.php' ? 'text-stone-900 bg-stone-100 font-semibold' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50' ?>">
                         Berita
                     </a>
-                    <a href="<?= getBaseUrl() ?>/tentang.php" class="px-2 py-2 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:outline-none <?= $currentPath === 'tentang.php' ? 'text-bkrc-red-800 font-bold border-b-2 border-bkrc-red-800' : 'text-slate-700 hover:text-bkrc-red-800' ?>">
+                    <a href="<?= getBaseUrl() ?>/tentang.php" class="px-3 py-1.5 text-xs font-medium rounded-lg transition <?= $currentPath === 'tentang.php' ? 'text-stone-900 bg-stone-100 font-semibold' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50' ?>">
                         Tentang
                     </a>
-                    <a href="<?= getBaseUrl() ?>/daftar_anggota.php" class="px-2 py-2 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:outline-none <?= $currentPath === 'daftar_anggota.php' ? 'text-bkrc-red-800 font-bold border-b-2 border-bkrc-red-800' : 'text-slate-700 hover:text-bkrc-red-800' ?>">
-                        Gabung Relawan
+                    <a href="<?= getBaseUrl() ?>/daftar_anggota.php" class="px-3 py-1.5 text-xs font-medium rounded-lg transition <?= $currentPath === 'daftar_anggota.php' ? 'text-stone-900 bg-stone-100 font-semibold' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50' ?>">
+                        Gabung relawan
                     </a>
                 </div>
 
-                <!-- Action Button -->
+                <!-- Action Button (Restrained crimson accent, no mismatched gold heart) -->
                 <div class="hidden md:flex items-center gap-3">
-                    <a href="<?= getBaseUrl() ?>/index.php#kanal-donasi" class="min-h-[44px] inline-flex items-center gap-2 bg-red-800 hover:bg-red-900 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition shadow-sm focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:ring-offset-2 focus-visible:outline-none">
-                        <i class="fa-solid fa-heart text-amber-400"></i> Donasi
+                    <a href="<?= getBaseUrl() ?>/index.php#kanal-donasi" class="min-h-[38px] inline-flex items-center gap-1.5 bg-[#8b1e1e] hover:bg-[#701616] text-white font-medium px-4 py-2 rounded-lg text-xs transition shadow-2xs focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:outline-none">
+                        <span>Salurkan donasi</span>
                     </a>
                 </div>
 
                 <!-- Mobile Hamburger Button with Accessible Label & 44px+ Hit Area -->
                 <div class="flex items-center md:hidden">
-                    <button @click="mobileOpen = !mobileOpen" type="button" :aria-expanded="mobileOpen.toString()" aria-label="Buka menu navigasi utama" class="min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl border border-slate-200 text-slate-700 hover:text-bkrc-red-800 hover:bg-slate-50 transition flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:outline-none">
-                        <i :class="mobileOpen ? 'fa-solid fa-xmark text-lg' : 'fa-solid fa-bars text-lg'"></i>
-                        <span class="text-xs font-bold text-slate-800" x-text="mobileOpen ? 'Tutup' : 'Menu'">Menu</span>
+                    <button @click="mobileOpen = !mobileOpen" type="button" :aria-expanded="mobileOpen.toString()" aria-label="Buka menu navigasi utama" class="min-h-[44px] min-w-[44px] px-3 py-2 rounded-lg border border-stone-200 text-stone-700 hover:text-stone-900 hover:bg-stone-50 transition flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:outline-none">
+                        <i :class="mobileOpen ? 'fa-solid fa-xmark text-base' : 'fa-solid fa-bars text-base'"></i>
+                        <span class="text-xs font-medium text-stone-800" x-text="mobileOpen ? 'Tutup' : 'Menu'">Menu</span>
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- Mobile Menu Dropdown with Accessible Touch Targets -->
-        <div x-show="mobileOpen" x-cloak class="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-5 space-y-1 shadow-lg">
-            <a href="<?= getBaseUrl() ?>/index.php" class="min-h-[44px] flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition <?= $currentPath === 'index.php' ? 'text-red-800 bg-red-50 border border-red-200/60' : 'text-slate-800 hover:bg-slate-100' ?>">
-                <i class="fa-solid fa-house w-5 text-slate-500 mr-2"></i> Beranda
+        <div x-show="mobileOpen" x-cloak class="md:hidden border-t border-stone-200 bg-white px-4 pt-3 pb-5 space-y-1 shadow-sm">
+            <a href="<?= getBaseUrl() ?>/index.php" class="min-h-[44px] flex items-center px-3 py-2 rounded-lg text-sm font-medium transition <?= $currentPath === 'index.php' ? 'text-stone-900 bg-stone-100 font-semibold' : 'text-stone-700 hover:bg-stone-50' ?>">
+                Beranda
             </a>
-            <a href="<?= getBaseUrl() ?>/agenda.php" class="min-h-[44px] flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition <?= $currentPath === 'agenda.php' ? 'text-red-800 bg-red-50 border border-red-200/60' : 'text-slate-800 hover:bg-slate-100' ?>">
-                <i class="fa-solid fa-calendar-days w-5 text-slate-500 mr-2"></i> Agenda Kegiatan
+            <a href="<?= getBaseUrl() ?>/agenda.php" class="min-h-[44px] flex items-center px-3 py-2 rounded-lg text-sm font-medium transition <?= $currentPath === 'agenda.php' ? 'text-stone-900 bg-stone-100 font-semibold' : 'text-stone-700 hover:bg-stone-50' ?>">
+                Agenda kegiatan
             </a>
-            <a href="<?= getBaseUrl() ?>/transparansi.php" class="min-h-[44px] flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition <?= $currentPath === 'transparansi.php' ? 'text-red-800 bg-red-50 border border-red-200/60' : 'text-slate-800 hover:bg-slate-100' ?>">
-                <i class="fa-solid fa-scale-balanced w-5 text-slate-500 mr-2"></i> Transparansi Donasi
+            <a href="<?= getBaseUrl() ?>/transparansi.php" class="min-h-[44px] flex items-center px-3 py-2 rounded-lg text-sm font-medium transition <?= $currentPath === 'transparansi.php' ? 'text-stone-900 bg-stone-100 font-semibold' : 'text-stone-700 hover:bg-stone-50' ?>">
+                Transparansi donasi
             </a>
-            <a href="<?= getBaseUrl() ?>/berita.php" class="min-h-[44px] flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition <?= $currentPath === 'berita.php' ? 'text-red-800 bg-red-50 border border-red-200/60' : 'text-slate-800 hover:bg-slate-100' ?>">
-                <i class="fa-solid fa-newspaper w-5 text-slate-500 mr-2"></i> Dokumentasi & Berita
+            <a href="<?= getBaseUrl() ?>/berita.php" class="min-h-[44px] flex items-center px-3 py-2 rounded-lg text-sm font-medium transition <?= $currentPath === 'berita.php' ? 'text-stone-900 bg-stone-100 font-semibold' : 'text-stone-700 hover:bg-stone-50' ?>">
+                Dokumentasi kegiatan
             </a>
-            <a href="<?= getBaseUrl() ?>/tentang.php" class="min-h-[44px] flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition <?= $currentPath === 'tentang.php' ? 'text-red-800 bg-red-50 border border-red-200/60' : 'text-slate-800 hover:bg-slate-100' ?>">
-                <i class="fa-solid fa-circle-info w-5 text-slate-500 mr-2"></i> Tentang BKRC
+            <a href="<?= getBaseUrl() ?>/tentang.php" class="min-h-[44px] flex items-center px-3 py-2 rounded-lg text-sm font-medium transition <?= $currentPath === 'tentang.php' ? 'text-stone-900 bg-stone-100 font-semibold' : 'text-stone-700 hover:bg-stone-50' ?>">
+                Tentang BKRC
             </a>
-            <a href="<?= getBaseUrl() ?>/daftar_anggota.php" class="min-h-[44px] flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition <?= $currentPath === 'daftar_anggota.php' ? 'text-red-800 bg-red-50 border border-red-200/60' : 'text-slate-800 hover:bg-slate-100' ?>">
-                <i class="fa-solid fa-user-plus w-5 text-slate-500 mr-2"></i> Gabung Relawan
+            <a href="<?= getBaseUrl() ?>/daftar_anggota.php" class="min-h-[44px] flex items-center px-3 py-2 rounded-lg text-sm font-medium transition <?= $currentPath === 'daftar_anggota.php' ? 'text-stone-900 bg-stone-100 font-semibold' : 'text-stone-700 hover:bg-stone-50' ?>">
+                Gabung relawan
             </a>
-            <div class="pt-3 border-t border-slate-100 mt-2">
-                <a href="<?= getBaseUrl() ?>/index.php#kanal-donasi" @click="mobileOpen = false" class="min-h-[48px] w-full flex items-center justify-center gap-2 bg-red-800 hover:bg-red-900 active:bg-red-950 text-white font-bold py-3 px-4 rounded-xl text-sm shadow-sm transition">
-                    <i class="fa-solid fa-heart text-amber-400"></i> Salurkan Donasi Sekarang
+            <div class="pt-3 border-t border-stone-100 mt-2">
+                <a href="<?= getBaseUrl() ?>/index.php#kanal-donasi" @click="mobileOpen = false" class="min-h-[44px] w-full flex items-center justify-center bg-[#8b1e1e] hover:bg-[#701616] text-white font-medium py-2.5 px-4 rounded-lg text-xs transition">
+                    Salurkan donasi
                 </a>
             </div>
         </div>

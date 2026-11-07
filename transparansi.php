@@ -55,89 +55,90 @@ $stmtEvents = $pdo->query("
 $events = $stmtEvents->fetchAll();
 ?>
 
-<!-- Header (Solid Slate-900, Clean Civic Header) -->
-<div class="bg-slate-900 text-white py-12 border-b border-slate-800">
+<!-- Header (Warm Stone-900, Clean Civic Header) -->
+<div class="bg-stone-900 text-white py-12 border-b border-stone-800">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-                <h1 class="text-3xl font-extrabold tracking-tight">Papan Transparansi Donasi & Kas</h1>
-                <p class="text-slate-300 text-sm mt-1">Laporan rekapitulasi dana masuk terverifikasi, paket sembako, dan realisasi penyaluran ke penerima.</p>
+                <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight">Papan transparansi donasi & kas</h1>
+                <p class="text-stone-300 text-xs sm:text-sm mt-1">Laporan rekapitulasi dana masuk terverifikasi, paket sembako, dan realisasi penyaluran ke penerima.</p>
             </div>
-            <div class="flex items-center gap-2 text-xs text-slate-300">
-                <a href="<?= getBaseUrl() ?>/index.php" class="hover:text-white">Beranda</a>
+            <div class="flex items-center gap-2 text-xs text-stone-400">
+                <a href="<?= getBaseUrl() ?>/index.php" class="hover:text-stone-200">Beranda</a>
                 <span>/</span>
-                <span class="text-amber-400 font-semibold">Transparansi</span>
+                <span class="text-stone-200 font-medium">Transparansi</span>
             </div>
         </div>
     </div>
 </div>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
     <!-- Rekapitulasi Kas & Sembako (Metric Cards) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-10">
         <!-- Saldo Kas Riil -->
-        <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-sm border border-slate-800">
-            <div class="text-xs text-slate-300 uppercase font-bold tracking-wider mb-1">Saldo Kas Riil (Bank)</div>
-            <div class="text-2xl sm:text-3xl font-extrabold text-amber-300 tabular-nums">
+        <div class="bg-stone-900 text-stone-100 rounded-xl p-5 sm:p-6 shadow-2xs border border-stone-800">
+            <div class="text-xs text-stone-400 font-normal mb-1">Saldo kas riil (bank)</div>
+            <div class="text-2xl sm:text-3xl font-semibold tabular-nums tracking-tight text-white">
                 <?= formatRupiah($kasSummary['saldo_kas_riil']) ?>
             </div>
-            <div class="text-[11px] text-slate-300 mt-2 flex items-center gap-1.5">
-                <i class="fa-solid fa-shield-halved text-emerald-400"></i> Kas aman, surplus positif
+            <div class="text-[11px] text-stone-400 mt-2 flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>Kas likuid tersedia di rekening</span>
             </div>
         </div>
 
         <!-- Total Penerimaan Kas -->
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-            <div class="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Total Kas Terverifikasi</div>
-            <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">
+        <div class="bg-white rounded-xl p-5 sm:p-6 shadow-2xs border border-stone-200/80">
+            <div class="text-xs text-stone-500 font-normal mb-1">Total kas terverifikasi</div>
+            <div class="text-2xl sm:text-3xl font-semibold text-stone-900 tabular-nums tracking-tight">
                 <?= formatRupiah($kasSummary['total_uang_masuk']) ?>
             </div>
-            <div class="text-[11px] text-slate-500 mt-2 flex justify-between">
+            <div class="text-[11px] text-stone-500 mt-2 flex justify-between">
                 <span>Donasi: <?= formatRupiah($kasSummary['total_donasi_masuk']) ?></span>
                 <span>Iuran: <?= formatRupiah($kasSummary['total_iuran_masuk']) ?></span>
             </div>
         </div>
 
         <!-- Total Santunan Uang Disalurkan -->
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-            <div class="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Realisasi Kas Disalurkan</div>
-            <div class="text-2xl sm:text-3xl font-extrabold text-emerald-700 tabular-nums">
+        <div class="bg-white rounded-xl p-5 sm:p-6 shadow-2xs border border-stone-200/80">
+            <div class="text-xs text-stone-500 font-normal mb-1">Realisasi kas disalurkan</div>
+            <div class="text-2xl sm:text-3xl font-semibold text-stone-900 tabular-nums tracking-tight">
                 <?= formatRupiah($kasSummary['total_realisasi_keluar']) ?>
             </div>
-            <div class="text-[11px] text-slate-500 mt-2 flex items-center gap-1">
-                <i class="fa-solid fa-hand-holding-heart text-bkrc-red-800"></i> Komitmen rencana: <?= formatRupiah($kasSummary['dana_pending']) ?>
+            <div class="text-[11px] text-stone-500 mt-2 flex items-center gap-1">
+                <span>Komitmen rencana: <?= formatRupiah($kasSummary['dana_pending']) ?></span>
             </div>
         </div>
 
         <!-- Paket Sembako Disalurkan -->
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-            <div class="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Paket Sembako Tersalurkan</div>
-            <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">
-                <?= number_format($kasSummary['total_sembako_tersalurkan']) ?> <span class="text-sm font-semibold text-slate-500">Paket</span>
+        <div class="bg-white rounded-xl p-5 sm:p-6 shadow-2xs border border-stone-200/80">
+            <div class="text-xs text-stone-500 font-normal mb-1">Paket sembako tersalurkan</div>
+            <div class="text-2xl sm:text-3xl font-semibold text-stone-900 tabular-nums tracking-tight">
+                <?= number_format($kasSummary['total_sembako_tersalurkan']) ?> <span class="text-sm font-normal text-stone-500">paket</span>
             </div>
-            <div class="text-[11px] text-slate-500 mt-2 flex items-center gap-1">
-                <i class="fa-solid fa-box-open text-amber-600"></i> Total diterima: <?= number_format($kasSummary['total_sembako_masuk']) ?> paket
+            <div class="text-[11px] text-stone-500 mt-2 flex items-center gap-1">
+                <span>Total diterima: <?= number_format($kasSummary['total_sembako_masuk']) ?> paket</span>
             </div>
         </div>
     </div>
 
     <!-- Section 1: Daftar Donasi & Iuran Masuk (Hanya Approved) -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-12">
-        <div class="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="bg-white rounded-xl shadow-2xs border border-stone-200/80 overflow-hidden mb-10">
+        <div class="p-5 sm:p-6 border-b border-stone-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <h2 class="text-lg font-bold text-slate-900">Catatan Penerimaan Kas (Donasi & Iuran Anggota)</h2>
-                <p class="text-xs text-slate-500">Seluruh data yang ditampilkan telah diverifikasi oleh Bendahara BKRC. Donatur berhak memilih opsi anonim.</p>
+                <h2 class="text-base sm:text-lg font-semibold text-stone-900">Catatan penerimaan kas</h2>
+                <p class="text-xs text-stone-500 mt-0.5">Seluruh data yang ditampilkan telah diverifikasi oleh Bendahara BKRC.</p>
             </div>
 
             <!-- Filter Buttons -->
-            <div class="flex flex-wrap items-center gap-1.5 text-xs">
-                <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=semua&kategori=<?= urlencode($catFilter) ?>" class="px-3 py-1.5 rounded-lg font-semibold transition <?= $typeFilter === 'semua' ? 'bg-bkrc-red-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>">
+            <div class="flex flex-wrap items-center gap-1 text-xs">
+                <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=semua&kategori=<?= urlencode($catFilter) ?>" class="px-3 py-1.5 rounded-lg font-medium transition <?= $typeFilter === 'semua' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
                     Semua
                 </a>
-                <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=uang&kategori=<?= urlencode($catFilter) ?>" class="px-3 py-1.5 rounded-lg font-semibold transition <?= $typeFilter === 'uang' ? 'bg-bkrc-red-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>">
-                    Uang Kas
+                <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=uang&kategori=<?= urlencode($catFilter) ?>" class="px-3 py-1.5 rounded-lg font-medium transition <?= $typeFilter === 'uang' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
+                    Uang kas
                 </a>
-                <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=sembako&kategori=<?= urlencode($catFilter) ?>" class="px-3 py-1.5 rounded-lg font-semibold transition <?= $typeFilter === 'sembako' ? 'bg-bkrc-red-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>">
+                <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=sembako&kategori=<?= urlencode($catFilter) ?>" class="px-3 py-1.5 rounded-lg font-medium transition <?= $typeFilter === 'sembako' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
                     Sembako
                 </a>
             </div>
@@ -145,20 +146,20 @@ $events = $stmtEvents->fetchAll();
 
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs sm:text-sm">
-                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[11px] font-bold tracking-wider">
+                <thead class="bg-stone-50 border-b border-stone-200 text-stone-600 text-[11px] font-medium tracking-normal">
                     <tr>
-                        <th class="py-3 px-4">No. Kwitansi</th>
+                        <th class="py-3 px-4">No. kwitansi</th>
                         <th class="py-3 px-4">Tanggal</th>
-                        <th class="py-3 px-4">Nama Donatur / Anggota</th>
+                        <th class="py-3 px-4">Nama donatur / anggota</th>
                         <th class="py-3 px-4">Kategori</th>
-                        <th class="py-3 px-4 text-right">Nominal / Rincian</th>
+                        <th class="py-3 px-4 text-right">Nominal / rincian</th>
                         <th class="py-3 px-4">Peruntukan</th>
-                        <th class="py-3 px-4 text-center">Kwitansi</th>
+                        <th class="py-3 px-4 text-center">Bukti</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100 text-slate-700">
+                <tbody class="divide-y divide-stone-100 text-stone-700">
                     <?php if (empty($donations)): ?>
-                        <tr><td colspan="7" class="py-8 text-center text-slate-500">Tidak ada data donasi/iuran ditemukan.</td></tr>
+                        <tr><td colspan="7" class="py-8 text-center text-stone-400">Tidak ada data donasi/iuran ditemukan.</td></tr>
                     <?php else: ?>
                         <?php foreach ($donations as $d): ?>
                             <?php
@@ -171,51 +172,51 @@ $events = $stmtEvents->fetchAll();
                             }
                             $isUang = ($d['type'] === 'uang');
                             ?>
-                            <tr class="hover:bg-slate-50 transition">
-                                <td class="py-3.5 px-4 font-mono font-bold text-slate-700 whitespace-nowrap">
-                                    <span class="bg-slate-100 px-2 py-1 rounded border border-slate-200 text-xs">
+                            <tr class="hover:bg-stone-50/70 transition-colors duration-150">
+                                <td class="py-3.5 px-4 font-mono font-medium text-stone-600 whitespace-nowrap">
+                                    <span class="bg-stone-100 px-2 py-0.5 rounded border border-stone-200 text-xs">
                                         <?= htmlspecialchars($d['receipt_no']) ?>
                                     </span>
                                 </td>
-                                <td class="py-3.5 px-4 whitespace-nowrap text-slate-600"><?= formatTanggalIndo($d['donation_date']) ?></td>
+                                <td class="py-3.5 px-4 whitespace-nowrap text-stone-500"><?= formatTanggalIndo($d['donation_date']) ?></td>
                                 <td class="py-3.5 px-4">
                                     <?php if ($d['is_anonymous']): ?>
-                                        <span class="italic text-slate-600 font-semibold">Hamba Allah</span>
-                                        <span class="text-[11px] text-slate-400 font-normal ml-1">(Anonim)</span>
+                                        <span class="italic text-stone-600 font-medium">Hamba Allah</span>
+                                        <span class="text-[11px] text-stone-400 font-normal ml-1">(Anonim)</span>
                                     <?php else: ?>
-                                        <span class="font-bold text-slate-900"><?= $donorDisplayName ?></span>
+                                        <span class="font-medium text-stone-900"><?= $donorDisplayName ?></span>
                                         <?php if ($isIuran && !empty($d['member_block'])): ?>
-                                            <span class="block text-[11px] text-slate-500 font-normal">Warga Blok <?= htmlspecialchars($d['member_block']) ?></span>
+                                            <span class="block text-[11px] text-stone-500 font-normal">Warga Blok <?= htmlspecialchars($d['member_block']) ?></span>
                                         <?php elseif (!empty($d['cluster_or_address'])): ?>
-                                            <span class="block text-[11px] text-slate-500 font-normal"><?= htmlspecialchars($d['cluster_or_address']) ?></span>
+                                            <span class="block text-[11px] text-stone-500 font-normal"><?= htmlspecialchars($d['cluster_or_address']) ?></span>
                                         <?php endif; ?>
                                     <?php endif; ?>
                                 </td>
                                 <td class="py-3.5 px-4 whitespace-nowrap">
                                     <?php if ($isIuran): ?>
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                                            Iuran Kas
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-stone-100 text-stone-700 border border-stone-200">
+                                            Iuran kas
                                         </span>
                                     <?php else: ?>
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-stone-100 text-stone-700 border border-stone-200">
                                             Donasi
                                         </span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="py-3.5 px-4 font-bold text-slate-900 tabular-nums whitespace-nowrap text-right">
+                                <td class="py-3.5 px-4 font-semibold text-stone-900 tabular-nums whitespace-nowrap text-right">
                                     <?php if ($isUang): ?>
-                                        <span class="text-emerald-700 font-extrabold"><?= formatRupiah($d['amount']) ?></span>
+                                        <span><?= formatRupiah($d['amount']) ?></span>
                                     <?php else: ?>
                                         <?= number_format($d['package_qty']) ?> Paket
                                         <?php if (!empty($d['package_details'])): ?>
-                                            <span class="block text-[11px] font-normal text-slate-500"><?= htmlspecialchars($d['package_details']) ?></span>
+                                            <span class="block text-[11px] font-normal text-stone-500"><?= htmlspecialchars($d['package_details']) ?></span>
                                         <?php endif; ?>
                                     <?php endif; ?>
                                 </td>
-                                <td class="py-3.5 px-4 text-xs text-slate-600"><?= htmlspecialchars($d['program_target']) ?></td>
+                                <td class="py-3.5 px-4 text-xs text-stone-500"><?= htmlspecialchars($d['program_target']) ?></td>
                                 <td class="py-3.5 px-4 text-center whitespace-nowrap">
-                                    <a href="<?= getReceiptUrl($d['id'], $d['receipt_no'], $d['created_at']) ?>" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition" title="Lihat Kwitansi Resmi">
-                                        <i class="fa-solid fa-receipt text-slate-500"></i> Bukti
+                                    <a href="<?= getReceiptUrl($d['id'], $d['receipt_no'], $d['created_at']) ?>" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-stone-700 bg-stone-50 hover:bg-stone-100 border border-stone-200 transition" title="Lihat Kwitansi Resmi">
+                                        <i class="fa-solid fa-receipt text-stone-400 text-[10px]"></i> Bukti
                                     </a>
                                 </td>
                             </tr>
@@ -227,7 +228,72 @@ $events = $stmtEvents->fetchAll();
     </div>
 
     <!-- Section 2: Realisasi Penyaluran Santunan & Program Lapangan -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-xl shadow-2xs border border-stone-200/80 overflow-hidden">
+        <div class="p-5 sm:p-6 border-b border-stone-200/80">
+            <h2 class="text-base sm:text-lg font-semibold text-stone-900">Realisasi penyaluran santunan & program lapangan</h2>
+            <p class="text-xs text-stone-500 mt-0.5">Rekapitulasi sesi kegiatan penyaluran yang telah didistribusikan kepada warga dan binaan.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs sm:text-sm">
+                <thead class="bg-stone-50 border-b border-stone-200 text-stone-600 text-[11px] font-medium tracking-normal">
+                    <tr>
+                        <th class="py-3 px-4">Nama sesi acara</th>
+                        <th class="py-3 px-4">Tanggal pelaksanaan</th>
+                        <th class="py-3 px-4">Kategori program</th>
+                        <th class="py-3 px-4 text-right">Nominal kas</th>
+                        <th class="py-3 px-4 text-right">Paket sembako</th>
+                        <th class="py-3 px-4 text-center">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100 text-stone-700">
+                    <?php if (empty($events)): ?>
+                        <tr><td colspan="6" class="py-8 text-center text-stone-400">Belum ada sesi penyaluran tercatat.</td></tr>
+                    <?php else: ?>
+                        <?php foreach ($events as $ev): ?>
+                            <?php
+                            $isTersalurkan = ($ev['disbursement_status'] === 'tersalurkan');
+                            ?>
+                            <tr class="hover:bg-stone-50/70 transition-colors duration-150">
+                                <td class="py-3 px-4 font-medium text-stone-900">
+                                    <?= htmlspecialchars($ev['event_name']) ?>
+                                    <?php if (!empty($ev['disbursed_to'])): ?>
+                                        <span class="block text-[11px] text-stone-500">Penerima/PIC: <?= htmlspecialchars($ev['disbursed_to']) ?></span>
+                                    <?php elseif (!empty($ev['notes'])): ?>
+                                        <span class="block text-[11px] text-stone-400"><?= htmlspecialchars($ev['notes']) ?></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="py-3 px-4 whitespace-nowrap text-stone-500"><?= formatTanggalIndo($ev['event_date']) ?></td>
+                                <td class="py-3 px-4">
+                                    <span class="text-xs text-stone-600 capitalize">
+                                        <?= str_replace('_', ' ', $ev['program_type']) ?>
+                                    </span>
+                                </td>
+                                <td class="py-3.5 px-4 font-semibold text-stone-900 tabular-nums text-right">
+                                    <?= formatRupiah($ev['total_cash_out']) ?>
+                                </td>
+                                <td class="py-3.5 px-4 font-semibold text-stone-900 tabular-nums text-right">
+                                    <?= $ev['total_packages_out'] > 0 ? number_format($ev['total_packages_out']) . ' Paket' : '–' ?>
+                                </td>
+                                <td class="py-3 px-4 text-center whitespace-nowrap">
+                                    <?php if ($isTersalurkan): ?>
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium bg-stone-100 text-stone-700 border border-stone-200">
+                                            <i class="fa-solid fa-check text-[10px] text-stone-500"></i> Tersalurkan
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium bg-stone-100 text-stone-500 border border-stone-200">
+                                            Rencana
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
         <div class="p-6 border-b border-slate-200">
             <h2 class="text-lg font-bold text-slate-900">Realisasi Penyaluran Santunan & Program Lapangan</h2>
             <p class="text-xs text-slate-500">Rekapitulasi sesi kegiatan penyaluran yang telah didistribusikan kepada warga dan anak yatim binaan.</p>

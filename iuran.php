@@ -162,65 +162,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<div class="min-h-screen bg-stone-50/60 py-10 sm:py-14">
+<div class="min-h-screen py-10 sm:py-14">
     <div class="w-full max-w-xl mx-auto px-4 sm:px-6">
 
         <?php if ($success && $submittedTrx): ?>
             <!-- HALAMAN SUKSES IURAN -->
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-                <div class="text-center pb-5 border-b border-slate-100">
-                    <div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center text-2xl mb-3">
+            <div class="bg-white rounded-xl border border-stone-200/90 p-6 sm:p-8">
+                <div class="text-center pb-5 border-b border-stone-100">
+                    <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 mx-auto flex items-center justify-center text-xl mb-3">
                         <i class="fa-solid fa-check"></i>
                     </div>
-                    <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">
-                        Konfirmasi Iuran Kas Berhasil
+                    <h1 class="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">
+                        Konfirmasi iuran terkirim
                     </h1>
-                    <p class="text-slate-600 text-xs sm:text-sm mt-1">
+                    <p class="text-stone-600 text-xs sm:text-sm mt-1">
                         Terima kasih atas kontribusi rutin Anda untuk kelangsungan program BKRC.
                     </p>
                     <div class="mt-3">
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                            Menunggu Verifikasi Bendahara
+                        <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-700 border border-stone-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                            Menunggu verifikasi bendahara
                         </span>
                     </div>
                 </div>
 
-                <div class="py-5 space-y-3 text-xs sm:text-sm border-b border-slate-100">
-                    <div class="flex justify-between items-center text-slate-600">
-                        <span>Nomor Referensi</span>
-                        <strong class="font-mono font-bold text-slate-900 text-sm sm:text-base select-all">
+                <div class="py-5 space-y-3 text-xs sm:text-sm border-b border-stone-100">
+                    <div class="flex justify-between items-center text-stone-600">
+                        <span>Nomor referensi</span>
+                        <strong class="font-mono font-medium text-stone-900 text-sm sm:text-base select-all">
                             <?= htmlspecialchars($submittedTrx['ref']) ?>
                         </strong>
                     </div>
-                    <div class="flex justify-between items-center text-slate-600">
-                        <span>Nama Anggota</span>
-                        <strong class="text-slate-900 font-semibold">
+                    <div class="flex justify-between items-center text-stone-600">
+                        <span>Nama anggota</span>
+                        <strong class="text-stone-900 font-medium">
                             <?= htmlspecialchars($submittedTrx['member_name']) ?>
-                            <span class="text-xs text-slate-500 font-normal">(<?= htmlspecialchars($submittedTrx['member_code']) ?>)</span>
+                            <span class="text-xs text-stone-500 font-normal font-mono">(<?= htmlspecialchars($submittedTrx['member_code']) ?>)</span>
                         </strong>
                     </div>
-                    <div class="flex justify-between items-center text-slate-600">
-                        <span>Nominal Iuran</span>
-                        <strong class="text-emerald-700 font-extrabold text-sm sm:text-base tabular-nums">
+                    <div class="flex justify-between items-center text-stone-600">
+                        <span>Nominal iuran</span>
+                        <strong class="text-bkrc-red-800 font-semibold text-sm sm:text-base tabular-nums">
                             <?= $submittedTrx['nominal_text'] ?>
                         </strong>
                     </div>
-                    <div class="flex justify-between items-center text-slate-600">
-                        <span>Tanggal Transfer</span>
-                        <span class="text-slate-900 font-medium">
+                    <div class="flex justify-between items-center text-stone-600">
+                        <span>Tanggal transfer</span>
+                        <span class="text-stone-900 font-normal">
                             <?= $submittedTrx['date_formatted'] ?>
                         </span>
                     </div>
-                    <div class="flex justify-between items-center text-slate-600">
-                        <span>Rekening Tujuan</span>
-                        <span class="text-slate-900 font-medium">
+                    <div class="flex justify-between items-center text-stone-600">
+                        <span>Rekening tujuan</span>
+                        <span class="text-stone-900 font-normal">
                             <?= htmlspecialchars($submittedTrx['bank_info']) ?>
                         </span>
                     </div>
-                    <div class="flex justify-between items-center text-slate-600">
-                        <span>Bukti Transfer</span>
-                        <span class="inline-flex items-center gap-1 font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md text-xs">
+                    <div class="flex justify-between items-center text-stone-600">
+                        <span>Bukti transfer</span>
+                        <span class="inline-flex items-center gap-1 font-medium text-stone-700 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded text-xs">
                             <i class="fa-brands fa-whatsapp text-emerald-600"></i>
                             Kirim via WhatsApp
                         </span>
@@ -228,13 +228,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <!-- Petunjuk Langkah Terakhir: Kirim Bukti ke WA -->
-                <div class="my-5 p-4 sm:p-5 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-center space-y-2">
-                    <div class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900 uppercase tracking-wider">
+                <div class="my-5 p-4 sm:p-5 bg-stone-50 border border-stone-200 rounded-xl text-center space-y-2">
+                    <div class="inline-flex items-center gap-1.5 text-xs font-medium text-stone-800">
                         <i class="fa-solid fa-arrow-turn-down text-emerald-600"></i>
-                        Langkah Terakhir: Kirim Bukti Iuran
+                        Langkah terakhir: kirim bukti iuran
                     </div>
-                    <p class="text-xs text-emerald-800 leading-relaxed max-w-md mx-auto">
-                        Silakan klik tombol hijau di bawah untuk membuka WhatsApp Bendahara. Format pesan otomatis sudah terisi, Anda cukup melampirkan foto bukti transfer.
+                    <p class="text-xs text-stone-600 leading-relaxed max-w-md mx-auto">
+                        Klik tombol di bawah untuk membuka WhatsApp Bendahara. Format pesan otomatis sudah terisi, Anda cukup melampirkan foto bukti transfer.
                     </p>
                     <?php
                     $waMsg = "Assalamualaikum Bendahara BKRC, saya sudah mengisi formulir konfirmasi Iuran Kas Anggota di web:\n\n"
@@ -249,17 +249,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <a href="<?= $waUrl ?>" 
                            target="_blank" 
                            rel="noopener noreferrer" 
-                           class="w-full min-h-[48px] bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">
-                            <i class="fa-brands fa-whatsapp text-lg"></i>
-                            <span>Kirim Bukti Iuran ke WhatsApp Bendahara</span>
+                           class="w-full min-h-[44px] bg-emerald-700 hover:bg-emerald-800 text-white font-medium text-xs sm:text-sm px-5 py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">
+                            <i class="fa-brands fa-whatsapp text-base"></i>
+                            <span>Kirim bukti iuran ke WhatsApp bendahara</span>
                         </a>
                     </div>
                 </div>
 
                 <div class="pt-1">
                     <a href="<?= getBaseUrl() ?>/index.php" 
-                       class="w-full min-h-[44px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-200 transition flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
-                        <span>Kembali ke Beranda</span>
+                       class="w-full min-h-[44px] bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium text-xs sm:text-sm px-4 py-2.5 rounded-lg border border-stone-200 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400">
+                        <span>Kembali ke beranda</span>
                     </a>
                 </div>
             </div>
@@ -268,11 +268,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- FORMULIR IURAN KAS -->
             <div class="space-y-6">
                 <div>
-                    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                        Iuran Kas Anggota Relawan
+                    <h1 class="text-2xl sm:text-3xl font-semibold text-stone-900 tracking-tight">
+                        Iuran kas relawan
                     </h1>
-                    <p class="text-slate-600 text-sm mt-1">
-                        Form khusus anggota relawan resmi BKRC. Kwitansi dikirim ke WhatsApp.
+                    <p class="text-stone-600 text-sm mt-1">
+                        Formulir khusus anggota relawan resmi BKRC. Kwitansi resmi dikirim ke WhatsApp Anda.
                     </p>
                 </div>
 
@@ -284,43 +284,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         this.copied = true;
                         setTimeout(() => this.copied = false, 2000);
                     }
-                }" class="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-slate-700 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+                }" class="bg-white border border-stone-200/90 rounded-xl p-3.5 sm:p-4 text-xs sm:text-sm text-stone-700 flex flex-wrap items-center justify-between gap-2">
                     <div class="leading-relaxed">
-                        <span>Transfer ke:</span>
-                        <strong class="text-slate-900 font-semibold ml-1">
+                        <span class="text-stone-500">Transfer ke:</span>
+                        <strong class="text-stone-900 font-semibold ml-1">
                             <?= htmlspecialchars($officialBank['name']) ?> <?= htmlspecialchars($officialBank['account_formatted']) ?>
                         </strong>
-                        <span class="text-slate-500 block sm:inline sm:ml-1">
+                        <span class="text-stone-500 block sm:inline sm:ml-1">
                             a.n. <?= htmlspecialchars($officialBank['holder']) ?>
                         </span>
                     </div>
                     <button @click="copyAccount()" 
                             type="button" 
-                            :class="copied ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'" 
-                            class="px-3 py-1.5 rounded-lg border text-xs font-semibold transition inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
+                            :class="copied ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border-stone-200'" 
+                            class="px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400">
                         <template x-if="!copied">
                             <span class="inline-flex items-center gap-1">
-                                <i class="fa-regular fa-copy"></i>
-                                <span>Salin</span>
+                                <i class="fa-regular fa-copy text-stone-500"></i>
+                                <span>Salin rekening</span>
                             </span>
                         </template>
                         <template x-if="copied">
-                            <span class="inline-flex items-center gap-1 text-emerald-700 font-bold">
+                            <span class="inline-flex items-center gap-1 text-emerald-700 font-medium">
                                 <i class="fa-solid fa-check"></i>
-                                <span>Tersalin ✓</span>
+                                <span>Tersalin</span>
                             </span>
                         </template>
                     </button>
                 </div>
 
                 <?php if (!empty($errors['general'])): ?>
-                    <div class="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm rounded-xl flex items-center gap-2">
+                    <div class="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm rounded-lg flex items-center gap-2">
                         <i class="fa-solid fa-circle-exclamation text-rose-600"></i>
                         <span><?= htmlspecialchars($errors['general']) ?></span>
                     </div>
                 <?php endif; ?>
 
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <div class="bg-white rounded-xl border border-stone-200/90 p-6 sm:p-8">
                     <form action="" method="POST" 
                           x-data="iuranFormLogic()" 
                           class="space-y-5" 
@@ -333,15 +333,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <!-- 1. Pilih Nama Anggota Aktif -->
                         <div>
-                            <label for="member_id" class="block text-xs sm:text-sm font-semibold text-slate-800 mb-1">
-                                Pilih nama anggota aktif <span class="text-bkrc-red-800 font-bold">*</span>
+                            <label for="member_id" class="block text-xs sm:text-sm font-medium text-stone-800 mb-1">
+                                Pilih nama anggota aktif <span class="text-bkrc-red-800">*</span>
                             </label>
                             <select id="member_id" 
                                     name="member_id" 
                                     @change="onMemberSelect($event)" 
                                     required 
-                                    class="w-full px-3.5 py-2.5 min-h-[44px] bg-white border <?= !empty($errors['member_id']) ? 'border-rose-400' : 'border-slate-300' ?> rounded-xl text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 transition">
-                                <option value="">-- Pilih dari Daftar Anggota Resmi --</option>
+                                    class="w-full px-3.5 py-2.5 min-h-[44px] bg-white border <?= !empty($errors['member_id']) ? 'border-rose-400 focus:ring-rose-400' : 'border-stone-300 focus:border-bkrc-red-800 focus:ring-1 focus:ring-bkrc-red-800' ?> rounded-lg text-sm text-stone-900 focus-visible:outline-none transition-colors">
+                                <option value="">-- Pilih dari daftar anggota resmi --</option>
                                 <?php foreach ($activeMembers as $mem): ?>
                                     <option value="<?= $mem['id'] ?>" 
                                             <?= ($old['member_id'] ?? 0) == $mem['id'] ? 'selected' : '' ?>>
@@ -349,9 +349,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <p class="text-xs text-slate-500 mt-1">
+                            <p class="text-xs text-stone-500 mt-1">
                                 Belum terdaftar sebagai relawan?
-                                <a href="<?= getBaseUrl() ?>/daftar_anggota.php" class="font-semibold text-bkrc-red-800 hover:underline ml-0.5">Daftar anggota di sini &rarr;</a>
+                                <a href="<?= getBaseUrl() ?>/daftar_anggota.php" class="font-medium text-bkrc-red-800 hover:underline ml-0.5">Daftar anggota di sini &rarr;</a>
                             </p>
                             <?php if (!empty($errors['member_id'])): ?>
                                 <p class="text-xs text-rose-600 mt-1.5"><?= htmlspecialchars($errors['member_id']) ?></p>
@@ -360,8 +360,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <!-- 2. Nomor WhatsApp -->
                         <div>
-                            <label for="donor_phone" class="block text-xs sm:text-sm font-semibold text-slate-800 mb-1">
-                                Nomor WhatsApp <span class="text-bkrc-red-800 font-bold">*</span>
+                            <label for="donor_phone" class="block text-xs sm:text-sm font-medium text-stone-800 mb-1">
+                                Nomor WhatsApp <span class="text-bkrc-red-800">*</span>
                             </label>
                             <input type="tel" 
                                    id="donor_phone" 
@@ -369,9 +369,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                    x-model="memberPhone" 
                                    required 
                                    placeholder="08xxxxxxxxxx" 
-                                   class="w-full px-3.5 py-2.5 min-h-[44px] bg-white border <?= !empty($errors['donor_phone']) ? 'border-rose-400' : 'border-slate-300' ?> rounded-xl text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 transition">
-                            <p class="text-xs text-slate-500 mt-1">
-                                Hanya untuk kwitansi, tidak ditampilkan di publik.
+                                   class="w-full px-3.5 py-2.5 min-h-[44px] bg-white border <?= !empty($errors['donor_phone']) ? 'border-rose-400 focus:ring-rose-400' : 'border-stone-300 focus:border-bkrc-red-800 focus:ring-1 focus:ring-bkrc-red-800' ?> rounded-lg text-sm font-mono text-stone-900 focus-visible:outline-none transition-colors">
+                            <p class="text-xs text-stone-500 mt-1">
+                                Hanya untuk kwitansi, tidak ditampilkan ke publik.
                             </p>
                             <?php if (!empty($errors['donor_phone'])): ?>
                                 <p class="text-xs text-rose-600 mt-1.5"><?= htmlspecialchars($errors['donor_phone']) ?></p>
@@ -380,42 +380,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <!-- 3. Nominal Iuran & Chip -->
                         <div>
-                            <label for="display_amount" class="block text-xs sm:text-sm font-semibold text-slate-800 mb-1">
-                                Nominal iuran (Rp) <span class="text-bkrc-red-800 font-bold">*</span>
+                            <label for="display_amount" class="block text-xs sm:text-sm font-medium text-stone-800 mb-1">
+                                Nominal iuran (Rp) <span class="text-bkrc-red-800">*</span>
                             </label>
                             <input type="text" 
                                    id="display_amount" 
                                    x-model="displayAmount" 
                                    @input="onAmountInput($event)" 
                                    placeholder="Rp 50.000" 
-                                   class="w-full px-3.5 py-2.5 min-h-[44px] bg-white border <?= !empty($errors['amount']) ? 'border-rose-400' : 'border-slate-300' ?> rounded-xl text-base font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 transition">
+                                   class="w-full px-3.5 py-2.5 min-h-[44px] bg-white border <?= !empty($errors['amount']) ? 'border-rose-400 focus:ring-rose-400' : 'border-stone-300 focus:border-bkrc-red-800 focus:ring-1 focus:ring-bkrc-red-800' ?> rounded-lg text-base font-medium tabular-nums text-stone-900 focus-visible:outline-none transition-colors">
                             
                             <input type="hidden" name="amount" :value="rawAmount">
 
                             <div class="flex flex-wrap gap-2 mt-2">
                                 <button type="button" 
                                         @click="selectChip(25000)" 
-                                        :class="selectedChip === 25000 ? 'bg-rose-50 border-bkrc-red-800 text-bkrc-red-900 font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 font-medium'" 
-                                        class="px-3 py-1.5 rounded-lg text-xs border transition">
-                                    25 Rb
+                                        :class="selectedChip === 25000 ? 'bg-stone-900 text-white border-stone-900 font-medium' : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border-stone-200 font-normal'" 
+                                        class="px-3 py-1.5 rounded-lg text-xs border transition-colors">
+                                    25.000
                                 </button>
                                 <button type="button" 
                                         @click="selectChip(50000)" 
-                                        :class="selectedChip === 50000 ? 'bg-rose-50 border-bkrc-red-800 text-bkrc-red-900 font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 font-medium'" 
-                                        class="px-3 py-1.5 rounded-lg text-xs border transition">
-                                    50 Rb (Standar)
+                                        :class="selectedChip === 50000 ? 'bg-stone-900 text-white border-stone-900 font-medium' : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border-stone-200 font-normal'" 
+                                        class="px-3 py-1.5 rounded-lg text-xs border transition-colors">
+                                    50.000 (Standar)
                                 </button>
                                 <button type="button" 
                                         @click="selectChip(100000)" 
-                                        :class="selectedChip === 100000 ? 'bg-rose-50 border-bkrc-red-800 text-bkrc-red-900 font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 font-medium'" 
-                                        class="px-3 py-1.5 rounded-lg text-xs border transition">
-                                    100 Rb
+                                        :class="selectedChip === 100000 ? 'bg-stone-900 text-white border-stone-900 font-medium' : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border-stone-200 font-normal'" 
+                                        class="px-3 py-1.5 rounded-lg text-xs border transition-colors">
+                                    100.000
                                 </button>
                                 <button type="button" 
                                         @click="selectChip(200000)" 
-                                        :class="selectedChip === 200000 ? 'bg-rose-50 border-bkrc-red-800 text-bkrc-red-900 font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 font-medium'" 
-                                        class="px-3 py-1.5 rounded-lg text-xs border transition">
-                                    200 Rb
+                                        :class="selectedChip === 200000 ? 'bg-stone-900 text-white border-stone-900 font-medium' : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border-stone-200 font-normal'" 
+                                        class="px-3 py-1.5 rounded-lg text-xs border transition-colors">
+                                    200.000
                                 </button>
                             </div>
 
@@ -426,8 +426,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <!-- 4. Tanggal Transfer -->
                         <div>
-                            <label for="donation_date" class="block text-xs sm:text-sm font-semibold text-slate-800 mb-1">
-                                Tanggal transfer <span class="text-bkrc-red-800 font-bold">*</span>
+                            <label for="donation_date" class="block text-xs sm:text-sm font-medium text-stone-800 mb-1">
+                                Tanggal transfer <span class="text-bkrc-red-800">*</span>
                             </label>
                             <input type="date" 
                                    id="donation_date" 
@@ -435,9 +435,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                    value="<?= htmlspecialchars($old['donation_date'] ?? date('Y-m-d')) ?>" 
                                    max="<?= date('Y-m-d') ?>" 
                                    required 
-                                   class="w-full px-3.5 py-2.5 min-h-[44px] bg-white border <?= !empty($errors['donation_date']) ? 'border-rose-400' : 'border-slate-300' ?> rounded-xl text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 transition">
-                            <p class="text-xs text-slate-500 mt-1">
-                                Hari ini: <?= formatTanggalIndo(date('Y-m-d')) ?>. Tanggal transfer tidak boleh di masa depan.
+                                   class="w-full px-3.5 py-2.5 min-h-[44px] bg-white border <?= !empty($errors['donation_date']) ? 'border-rose-400 focus:ring-rose-400' : 'border-stone-300 focus:border-bkrc-red-800 focus:ring-1 focus:ring-bkrc-red-800' ?> rounded-lg text-sm text-stone-900 focus-visible:outline-none transition-colors">
+                            <p class="text-xs text-stone-500 mt-1">
+                                Tanggal transfer tidak boleh melebihi hari ini.
                             </p>
                             <?php if (!empty($errors['donation_date'])): ?>
                                 <p class="text-xs text-rose-600 mt-1.5"><?= htmlspecialchars($errors['donation_date']) ?></p>
@@ -446,31 +446,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <!-- 5. Catatan (Opsional) -->
                         <div>
-                            <label for="notes" class="block text-xs sm:text-sm font-semibold text-slate-800 mb-1">
-                                Catatan periode iuran <span class="text-xs font-normal text-slate-500">(opsional)</span>
+                            <label for="notes" class="block text-xs sm:text-sm font-medium text-stone-800 mb-1">
+                                Catatan periode iuran <span class="text-xs font-normal text-stone-500">(opsional)</span>
                             </label>
                             <input type="text" 
                                    id="notes" 
                                    name="notes" 
                                    value="<?= htmlspecialchars($old['notes'] ?? '') ?>" 
                                    placeholder="Contoh: Iuran kas bulan <?= date('F Y') ?>" 
-                                   class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 transition">
+                                   class="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus-visible:outline-none focus:border-bkrc-red-800 focus:ring-1 focus:ring-bkrc-red-800 transition-colors">
                         </div>
 
                         <!-- Pemberitahuan Pengiriman Bukti via WA -->
-                        <div class="p-3 sm:p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-start gap-2.5 text-xs text-amber-900">
+                        <div class="p-3.5 bg-stone-50 border border-stone-200 rounded-lg flex items-start gap-2.5 text-xs text-stone-700">
                             <i class="fa-brands fa-whatsapp text-emerald-600 text-base mt-0.5 shrink-0"></i>
                             <div class="leading-relaxed">
-                                <strong class="text-slate-900">Kirim Bukti Iuran:</strong>
-                                <span class="text-slate-700 ml-1">Setelah klik tombol di bawah, Anda akan langsung diarahkan untuk mengirimkan foto struk iuran ke WhatsApp Bendahara agar segera diverifikasi.</span>
+                                <strong class="text-stone-900 font-medium">Kirim bukti iuran:</strong>
+                                <span class="text-stone-600 ml-1">Setelah klik tombol di bawah, Anda akan langsung diarahkan untuk mengirimkan foto struk iuran ke WhatsApp Bendahara agar segera diverifikasi.</span>
                             </div>
                         </div>
 
                         <!-- Tombol Submit -->
                         <div class="pt-1">
                             <button type="submit" 
-                                    class="w-full min-h-[48px] bg-bkrc-red-800 hover:bg-bkrc-red-900 active:bg-bkrc-red-950 text-white font-bold text-sm px-6 py-3 rounded-xl transition shadow-xs flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800">
-                                <span>Kirim Konfirmasi Iuran</span>
+                                    class="w-full min-h-[48px] bg-bkrc-red-800 hover:bg-bkrc-red-900 text-white font-medium text-sm px-6 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800">
+                                <span>Kirim konfirmasi iuran</span>
                                 <i class="fa-solid fa-arrow-right text-xs"></i>
                             </button>
                         </div>
@@ -480,10 +480,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <!-- Tautan Balik ke Donasi Sukarela -->
                 <div class="text-center pt-2 pb-6">
-                    <p class="text-xs text-slate-500">
+                    <p class="text-xs text-stone-500">
                         Bukan anggota atau ingin donasi sukarela?
-                        <a href="<?= getBaseUrl() ?>/donasi.php" class="font-bold text-bkrc-red-800 hover:underline inline-flex items-center gap-1 ml-1">
-                            <span>Buka Form Donasi Sukarela</span>
+                        <a href="<?= getBaseUrl() ?>/donasi.php" class="font-medium text-bkrc-red-800 hover:underline inline-flex items-center gap-1 ml-1">
+                            <span>Buka formulir donasi sukarela</span>
                             <span>&rarr;</span>
                         </a>
                     </p>
