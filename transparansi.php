@@ -277,76 +277,11 @@ $events = $stmtEvents->fetchAll();
                                 </td>
                                 <td class="py-3 px-4 text-center whitespace-nowrap">
                                     <?php if ($isTersalurkan): ?>
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium bg-stone-100 text-stone-700 border border-stone-200">
-                                            <i class="fa-solid fa-check text-[10px] text-stone-500"></i> Tersalurkan
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium bg-stone-100 text-stone-500 border border-stone-200">
-                                            Rencana
-                                        </span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-        <div class="p-6 border-b border-slate-200">
-            <h2 class="text-lg font-bold text-slate-900">Realisasi Penyaluran Santunan & Program Lapangan</h2>
-            <p class="text-xs text-slate-500">Rekapitulasi sesi kegiatan penyaluran yang telah didistribusikan kepada warga dan anak yatim binaan.</p>
-        </div>
-
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs sm:text-sm">
-                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[11px] font-bold tracking-wider">
-                    <tr>
-                        <th class="py-3 px-4">Nama Sesi Acara</th>
-                        <th class="py-3 px-4">Tanggal Pelaksanaan</th>
-                        <th class="py-3 px-4">Kategori Program</th>
-                        <th class="py-3 px-4 text-right">Nominal Kas</th>
-                        <th class="py-3 px-4 text-right">Paket Sembako</th>
-                        <th class="py-3 px-4 text-center">Status Lapangan</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 text-slate-700">
-                    <?php if (empty($events)): ?>
-                        <tr><td colspan="6" class="py-8 text-center text-slate-500">Belum ada sesi penyaluran tercatat.</td></tr>
-                    <?php else: ?>
-                        <?php foreach ($events as $ev): ?>
-                            <?php
-                            $isTersalurkan = ($ev['disbursement_status'] === 'tersalurkan');
-                            ?>
-                            <tr class="hover:bg-slate-50 transition">
-                                <td class="py-3 px-4 font-bold text-slate-900">
-                                    <?= htmlspecialchars($ev['event_name']) ?>
-                                    <?php if (!empty($ev['disbursed_to'])): ?>
-                                        <span class="block text-[11px] font-medium text-emerald-800">Penerima/PIC: <?= htmlspecialchars($ev['disbursed_to']) ?></span>
-                                    <?php elseif (!empty($ev['notes'])): ?>
-                                        <span class="block text-[11px] font-normal text-slate-500"><?= htmlspecialchars($ev['notes']) ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="py-3 px-4 whitespace-nowrap"><?= formatTanggalIndo($ev['event_date']) ?></td>
-                                <td class="py-3 px-4">
-                                    <span class="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                        <?= str_replace('_', ' ', $ev['program_type']) ?>
-                                    </span>
-                                </td>
-                                <td class="py-3.5 px-4 font-bold text-slate-900 tabular-nums text-right">
-                                    <?= formatRupiah($ev['total_cash_out']) ?>
-                                </td>
-                                <td class="py-3.5 px-4 font-bold text-slate-900 tabular-nums text-right">
-                                    <?= $ev['total_packages_out'] > 0 ? number_format($ev['total_packages_out']) . ' Paket' : '–' ?>
-                                </td>
-                                <td class="py-3 px-4 text-center whitespace-nowrap">
-                                    <?php if ($isTersalurkan): ?>
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
                                             <i class="fa-solid fa-circle-check text-emerald-600"></i> Tersalurkan
                                         </span>
                                     <?php else: ?>
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300">
                                             <i class="fa-solid fa-clock text-amber-600"></i> Direncanakan
                                         </span>
                                     <?php endif; ?>
