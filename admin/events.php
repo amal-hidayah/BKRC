@@ -275,7 +275,7 @@ require_once __DIR__ . '/includes/sidebar.php';
     },
     syncBeneficiaries() {
         if (!this.isEdit) {
-            this.selectedBenIds = this.allBeneficiaries.map(b => b.id);
+            this.selectedBenIds = [];
         }
     },
     selectAll() {
