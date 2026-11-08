@@ -11,6 +11,23 @@ $kasSummary = getKasSummary($pdo);
 // Ambil Riwayat Donasi & Iuran Masuk (HANYA STATUS APPROVED)
 $typeFilter = $_GET['tipe'] ?? 'semua';
 $catFilter = $_GET['kategori'] ?? 'semua';
+$monthFilter = trim($_GET['bulan'] ?? 'semua');
+$searchQuery = trim($_GET['q'] ?? '');
+
+$namaBulan = [
+    '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
+    '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
+    '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+];
+
+// Query daftar bulan transaksi yang tersedia untuk filter dropdown
+$stmtMonths = $pdo->query("
+    SELECT DISTINCT DATE_FORMAT(donation_date, '%Y-%m') as ym, DATE_FORMAT(donation_date, '%m') as m, DATE_FORMAT(donation_date, '%Y') as y
+    FROM donations 
+    WHERE status = 'approved' AND donation_date IS NOT NULL
+    ORDER BY ym DESC
+");
+$availableMonths = $stmtMonths->fetchAll();
 
 $whereClauses = ["d.status = 'approved'"];
 $paramsDonation = [];
@@ -23,6 +40,48 @@ if ($typeFilter === 'uang' || $typeFilter === 'sembako') {
 if ($catFilter === 'donasi' || $catFilter === 'iuran') {
     $whereClauses[] = "d.transaction_category = ?";
     $paramsDonation[] = $catFilter;
+}
+
+// Filter Periode Bulan (format YYYY-MM)
+if (!empty($monthFilter) && $monthFilter !== 'semua') {
+    $whereClauses[] = "DATE_FORMAT(d.donation_date, '%Y-%m') = ?";
+    $paramsDonation[] = $monthFilter;
+}
+
+// Pencarian Berdasarkan: No Kwitansi / Nama Donatur / Nama Bulan
+if (!empty($searchQuery)) {
+    $indoMonths = [
+        'januari' => '01', 'februari' => '02', 'maret' => '03', 'april' => '04',
+        'mei' => '05', 'juni' => '06', 'juli' => '07', 'agustus' => '08',
+        'september' => '09', 'oktober' => '10', 'november' => '11', 'desember' => '12'
+    ];
+    $qLower = strtolower($searchQuery);
+
+    if (isset($indoMonths[$qLower])) {
+        $mNum = $indoMonths[$qLower];
+        $term = "%{$searchQuery}%";
+        $whereClauses[] = "(DATE_FORMAT(d.donation_date, '%m') = ? OR d.receipt_no LIKE ? OR dn.full_name LIKE ? OR m.full_name LIKE ?)";
+        $paramsDonation[] = $mNum;
+        $paramsDonation[] = $term;
+        $paramsDonation[] = $term;
+        $paramsDonation[] = $term;
+    } else {
+        $term = "%{$searchQuery}%";
+        $whereClauses[] = "(
+            d.receipt_no LIKE ? 
+            OR dn.full_name LIKE ? 
+            OR m.full_name LIKE ? 
+            OR (d.is_anonymous = 1 AND 'hamba allah' LIKE ?)
+            OR DATE_FORMAT(d.donation_date, '%Y-%m-%d') LIKE ?
+            OR d.program_target LIKE ?
+        )";
+        $paramsDonation[] = $term;
+        $paramsDonation[] = $term;
+        $paramsDonation[] = $term;
+        $paramsDonation[] = $term;
+        $paramsDonation[] = $term;
+        $paramsDonation[] = $term;
+    }
 }
 
 $whereSql = implode(" AND ", $whereClauses);
@@ -124,23 +183,74 @@ $events = $stmtEvents->fetchAll();
 
     <!-- Section 1: Daftar Donasi & Iuran Masuk (Hanya Approved) -->
     <div class="bg-white rounded-xl shadow-2xs border border-stone-200/80 overflow-hidden mb-10">
-        <div class="p-5 sm:p-6 border-b border-stone-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="p-5 sm:p-6 border-b border-stone-200/80 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
             <div>
                 <h2 class="text-base sm:text-lg font-semibold text-stone-900">Catatan penerimaan kas</h2>
-                <p class="text-xs text-stone-500 mt-0.5">Seluruh data yang ditampilkan telah diverifikasi oleh Bendahara BKRC.</p>
+                <p class="text-xs text-stone-500 mt-0.5">
+                    Seluruh data yang ditampilkan telah diverifikasi oleh Bendahara BKRC.
+                    <?php if (!empty($searchQuery) || ($monthFilter !== 'semua' && !empty($monthFilter))): ?>
+                        <span class="font-medium text-stone-700 ml-1">· Ditemukan <?= count($donations) ?> data</span>
+                    <?php endif; ?>
+                </p>
             </div>
 
-            <!-- Filter Buttons -->
-            <div class="flex flex-wrap items-center gap-1 text-xs">
-                <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=semua&kategori=<?= urlencode($catFilter) ?>" class="px-3 py-1.5 rounded-lg font-medium transition <?= $typeFilter === 'semua' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
-                    Semua
-                </a>
-                <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=uang&kategori=<?= urlencode($catFilter) ?>" class="px-3 py-1.5 rounded-lg font-medium transition <?= $typeFilter === 'uang' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
-                    Uang kas
-                </a>
-                <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=sembako&kategori=<?= urlencode($catFilter) ?>" class="px-3 py-1.5 rounded-lg font-medium transition <?= $typeFilter === 'sembako' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
-                    Sembako
-                </a>
+            <!-- Search Bar & Filters (No Kwitansi / Bulan / Nama Donatur) -->
+            <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 text-xs">
+                <!-- Form Pencarian Terpadu -->
+                <form method="GET" action="<?= getBaseUrl() ?>/transparansi.php" class="flex flex-wrap items-center gap-2">
+                    <input type="hidden" name="tipe" value="<?= htmlspecialchars($typeFilter) ?>">
+                    <input type="hidden" name="kategori" value="<?= htmlspecialchars($catFilter) ?>">
+
+                    <!-- 1. Filter Pilihan Bulan -->
+                    <select name="bulan" onchange="this.form.submit()" class="bg-white border border-stone-300 rounded-lg text-xs px-2.5 py-1.5 min-h-[36px] text-stone-700 focus:outline-none focus:border-bkrc-red-800 transition">
+                        <option value="semua">Semua bulan</option>
+                        <?php foreach ($availableMonths as $m): ?>
+                            <?php 
+                            $labelBln = ($namaBulan[$m['m']] ?? $m['m']) . ' ' . $m['y'];
+                            ?>
+                            <option value="<?= $m['ym'] ?>" <?= $monthFilter === $m['ym'] ? 'selected' : '' ?>>
+                                <?= $labelBln ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <!-- 2. Kotak Input Pencarian (No. Kwitansi / Nama Donatur) -->
+                    <div class="relative flex-grow sm:flex-grow-0">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-stone-400 pointer-events-none">
+                            <i class="fa-solid fa-magnifying-glass text-[11px]"></i>
+                        </span>
+                        <input type="text" 
+                               name="q" 
+                               value="<?= htmlspecialchars($searchQuery) ?>" 
+                               placeholder="Cari no. kwitansi / nama..." 
+                               class="pl-8 pr-3 py-1.5 min-h-[36px] w-full sm:w-48 md:w-56 bg-white border border-stone-300 rounded-lg text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-bkrc-red-800 transition">
+                    </div>
+
+                    <!-- Tombol Cari -->
+                    <button type="submit" class="bg-stone-900 hover:bg-stone-800 active:bg-black text-white font-medium px-3.5 py-1.5 min-h-[36px] rounded-lg text-xs transition flex items-center gap-1.5">
+                        <span>Cari</span>
+                    </button>
+
+                    <!-- Tombol Reset / Bersihkan Filter -->
+                    <?php if (!empty($searchQuery) || ($monthFilter !== 'semua' && !empty($monthFilter)) || $typeFilter !== 'semua'): ?>
+                        <a href="<?= getBaseUrl() ?>/transparansi.php" class="bg-stone-100 hover:bg-stone-200 text-stone-600 font-medium px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs transition inline-flex items-center gap-1" title="Bersihkan pencarian & filter">
+                            <i class="fa-solid fa-xmark text-[11px]"></i> Reset
+                        </a>
+                    <?php endif; ?>
+                </form>
+
+                <!-- 3. Tombol Filter Kategori (Semua / Uang kas / Sembako) -->
+                <div class="flex items-center gap-1 pl-0 sm:pl-2 border-t sm:border-t-0 sm:border-l border-stone-200 pt-2 sm:pt-0">
+                    <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=semua&kategori=<?= urlencode($catFilter) ?>&bulan=<?= urlencode($monthFilter) ?>&q=<?= urlencode($searchQuery) ?>" class="px-2.5 py-1.5 min-h-[36px] inline-flex items-center rounded-lg font-medium transition <?= $typeFilter === 'semua' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
+                        Semua
+                    </a>
+                    <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=uang&kategori=<?= urlencode($catFilter) ?>&bulan=<?= urlencode($monthFilter) ?>&q=<?= urlencode($searchQuery) ?>" class="px-2.5 py-1.5 min-h-[36px] inline-flex items-center rounded-lg font-medium transition <?= $typeFilter === 'uang' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
+                        Uang kas
+                    </a>
+                    <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=sembako&kategori=<?= urlencode($catFilter) ?>&bulan=<?= urlencode($monthFilter) ?>&q=<?= urlencode($searchQuery) ?>" class="px-2.5 py-1.5 min-h-[36px] inline-flex items-center rounded-lg font-medium transition <?= $typeFilter === 'sembako' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
+                        Sembako
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -159,7 +269,19 @@ $events = $stmtEvents->fetchAll();
                 </thead>
                 <tbody class="divide-y divide-stone-100 text-stone-700">
                     <?php if (empty($donations)): ?>
-                        <tr><td colspan="7" class="py-8 text-center text-stone-400">Tidak ada data donasi/iuran ditemukan.</td></tr>
+                        <tr>
+                            <td colspan="7" class="py-12 text-center text-stone-500">
+                                <i class="fa-solid fa-magnifying-glass text-2xl text-stone-300 mb-2 block"></i>
+                                Tidak ada data penerimaan kas yang cocok dengan pencarian Anda.
+                                <?php if (!empty($searchQuery) || ($monthFilter !== 'semua' && !empty($monthFilter)) || $typeFilter !== 'semua'): ?>
+                                    <div class="mt-2">
+                                        <a href="<?= getBaseUrl() ?>/transparansi.php" class="text-bkrc-red-800 hover:underline font-medium text-xs">
+                                            &larr; Tampilkan seluruh data kas
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
                     <?php else: ?>
                         <?php foreach ($donations as $d): ?>
                             <?php
