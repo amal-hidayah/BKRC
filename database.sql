@@ -25,6 +25,7 @@ CREATE TABLE users (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
+    password_hint VARCHAR(100) DEFAULT 'admin123',
     role ENUM('superadmin', 'admin') DEFAULT 'admin',
     phone VARCHAR(25) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
