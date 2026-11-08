@@ -49,51 +49,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
                 $newEventId = $pdo->lastInsertId();
 
-                // Auto-isi daftar penerima yang aktif sesuai kategori program (berdasarkan pilihan admin atau default)
+                // Auto-isi daftar penerima yang aktif secara global (tanpa tersekat kategori)
                 $selectedBenIds = isset($_POST['selected_beneficiaries']) && is_array($_POST['selected_beneficiaries'])
-                    ? array_map('intval', $_POST['selected_beneficiaries'])
+                    ? array_filter(array_map('intval', $_POST['selected_beneficiaries']))
                     : [];
                 $hasSelectionControl = isset($_POST['beneficiaries_selection_active']);
 
-                if ($programType === 'santunan_yatim') {
-                    if ($hasSelectionControl) {
-                        if (!empty($selectedBenIds)) {
-                            $inClause = implode(',', array_fill(0, count($selectedBenIds), '?'));
-                            $stmtB = $pdo->prepare("SELECT id FROM beneficiaries WHERE id IN ({$inClause}) AND category = 'yatim' AND status = 'layak_aktif'");
-                            $stmtB->execute($selectedBenIds);
-                            $bens = $stmtB->fetchAll();
-                        } else {
-                            $bens = [];
-                        }
+                if ($hasSelectionControl) {
+                    if (!empty($selectedBenIds)) {
+                        $inClause = implode(',', array_fill(0, count($selectedBenIds), '?'));
+                        $stmtB = $pdo->prepare("SELECT id, full_name, category FROM beneficiaries WHERE id IN ({$inClause}) AND status = 'layak_aktif'");
+                        $stmtB->execute($selectedBenIds);
+                        $bens = $stmtB->fetchAll();
                     } else {
-                        $bens = $pdo->query("SELECT id FROM beneficiaries WHERE category = 'yatim' AND status = 'layak_aktif'")->fetchAll();
+                        $bens = [];
+                    }
+                } else {
+                    // Fallback jika form tidak menyertakan kontrol checkbox (default berdasarkan kategori program)
+                    if ($programType === 'santunan_yatim') {
+                        $bens = $pdo->query("SELECT id, full_name, category FROM beneficiaries WHERE category = 'yatim' AND status = 'layak_aktif'")->fetchAll();
+                    } elseif ($programType === 'sembako') {
+                        $bens = $pdo->query("SELECT id, full_name, category FROM beneficiaries WHERE status = 'layak_aktif'")->fetchAll();
+                    } else {
+                        $bens = [];
+                    }
+                }
+
+                if (!empty($bens)) {
+                    $benCount = count($bens);
+                    $cashPerPerson = ($totalCashOut > 0 && $benCount > 0) ? round($totalCashOut / $benCount) : 0;
+                    
+                    if ($totalPackagesOut > 0) {
+                        $packageDetail = "1 Paket Bantuan Sembako (Total: {$totalPackagesOut} Paket)";
+                    } elseif ($programType === 'santunan_yatim') {
+                        $packageDetail = 'Santunan Tunai & Perlengkapan';
+                    } elseif ($programType === 'sembako') {
+                        $packageDetail = '1 Paket Sembako Lengkap';
+                    } else {
+                        $packageDetail = 'Bantuan / Santunan Program';
                     }
 
-                    $benCount = count($bens);
-                    $cashPerChild = ($totalCashOut > 0 && $benCount > 0) ? ($totalCashOut / $benCount) : 350000;
-                    $logStatus = ($disbursementStatus === 'tersalurkan') ? 'distributed' : 'pending';
-                    $logTime = ($disbursementStatus === 'tersalurkan') ? date('Y-m-d H:i:s') : null;
-                    $insLog = $pdo->prepare("INSERT INTO distribution_logs (event_id, beneficiary_id, cash_amount, sembako_package_detail, status, distributed_at) VALUES (?, ?, ?, 'Paket Beras 5kg & Minyak', ?, ?)");
-                    foreach ($bens as $b) {
-                        $insLog->execute([$newEventId, $b['id'], $cashPerChild, $logStatus, $logTime]);
-                    }
-                } elseif ($programType === 'sembako') {
-                    if ($hasSelectionControl) {
-                        if (!empty($selectedBenIds)) {
-                            $inClause = implode(',', array_fill(0, count($selectedBenIds), '?'));
-                            $stmtB = $pdo->prepare("SELECT id FROM beneficiaries WHERE id IN ({$inClause}) AND category IN ('sembako', 'dhuafa', 'lansia') AND status = 'layak_aktif'");
-                            $stmtB->execute($selectedBenIds);
-                            $bens = $stmtB->fetchAll();
-                        } else {
-                            $bens = [];
-                        }
-                    } else {
-                        $bens = $pdo->query("SELECT id FROM beneficiaries WHERE category IN ('sembako', 'dhuafa', 'lansia') AND status = 'layak_aktif'")->fetchAll();
-                    }
-
-                    $benCount = count($bens);
-                    $cashPerPerson = ($totalCashOut > 0 && $benCount > 0) ? ($totalCashOut / $benCount) : 0;
-                    $packageDetail = ($totalPackagesOut > 0) ? "1 Paket Sembako Lengkap (Total: {$totalPackagesOut} Paket)" : '1 Paket Sembako Lengkap';
                     $logStatus = ($disbursementStatus === 'tersalurkan') ? 'distributed' : 'pending';
                     $logTime = ($disbursementStatus === 'tersalurkan') ? date('Y-m-d H:i:s') : null;
                     $insLog = $pdo->prepare("INSERT INTO distribution_logs (event_id, beneficiary_id, cash_amount, sembako_package_detail, status, distributed_at) VALUES (?, ?, ?, ?, ?, ?)");
@@ -254,6 +249,7 @@ require_once __DIR__ . '/includes/sidebar.php';
     isEdit: false,
     allBeneficiaries: <?= htmlspecialchars(json_encode($activeBeneficiariesList, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>,
     selectedBenIds: [],
+    beneficiaryFilter: 'semua',
     disbursedForm: { id: '', event_name: '', disbursed_at: '<?= date('Y-m-d') ?>', disbursed_to: '', hasChecklist: false },
     deleteForm: { id: '', name: '' },
     form: { 
@@ -268,20 +264,22 @@ require_once __DIR__ . '/includes/sidebar.php';
         notes: '' 
     },
     getFilteredBeneficiaries() {
-        if (this.form.program_type === 'santunan_yatim') {
+        if (this.beneficiaryFilter === 'yatim') {
             return this.allBeneficiaries.filter(b => b.category === 'yatim');
-        } else if (this.form.program_type === 'sembako') {
-            return this.allBeneficiaries.filter(b => ['sembako', 'dhuafa', 'lansia'].includes(b.category));
+        } else if (this.beneficiaryFilter === 'dhuafa_lansia') {
+            return this.allBeneficiaries.filter(b => ['dhuafa', 'lansia'].includes(b.category));
+        } else if (this.beneficiaryFilter === 'sembako') {
+            return this.allBeneficiaries.filter(b => b.category === 'sembako');
         }
-        return [];
+        return this.allBeneficiaries;
     },
     syncBeneficiaries() {
         if (!this.isEdit) {
-            this.selectedBenIds = this.getFilteredBeneficiaries().map(b => b.id);
+            this.selectedBenIds = this.allBeneficiaries.map(b => b.id);
         }
     },
     selectAll() {
-        this.selectedBenIds = this.getFilteredBeneficiaries().map(b => b.id);
+        this.selectedBenIds = this.allBeneficiaries.map(b => b.id);
     },
     unselectAll() {
         this.selectedBenIds = [];
@@ -294,7 +292,7 @@ require_once __DIR__ . '/includes/sidebar.php';
         }
         return 'Rp 0';
     }
-}" x-init="$watch('form.program_type', () => syncBeneficiaries())" class="flex-1 flex flex-col min-w-0 w-full">
+}" class="flex-1 flex flex-col min-w-0 w-full">
     <!-- Topbar -->
     <header class="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 shadow-xs">
         <div class="flex items-center gap-3">
@@ -310,7 +308,7 @@ require_once __DIR__ . '/includes/sidebar.php';
             </div>
         </div>
 
-        <button @click="isEdit = false; form = { id: '', event_name: '', event_date: '<?= date('Y-m-d') ?>', program_type: 'santunan_yatim', total_cash_out: '1050000', total_packages_out: '0', disbursement_status: 'direncanakan', disbursed_to: '', notes: '' }; syncBeneficiaries(); modalOpen = true" class="min-h-[44px] inline-flex items-center justify-center bg-bkrc-red-800 hover:bg-bkrc-red-900 active:bg-bkrc-red-950 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl transition shadow-xs focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:ring-offset-2 focus-visible:outline-none">
+        <button @click="isEdit = false; beneficiaryFilter = 'semua'; form = { id: '', event_name: '', event_date: '<?= date('Y-m-d') ?>', program_type: 'santunan_yatim', total_cash_out: '1050000', total_packages_out: '0', disbursement_status: 'direncanakan', disbursed_to: '', notes: '' }; syncBeneficiaries(); modalOpen = true" class="min-h-[44px] inline-flex items-center justify-center bg-bkrc-red-800 hover:bg-bkrc-red-900 active:bg-bkrc-red-950 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl transition shadow-xs focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:ring-offset-2 focus-visible:outline-none">
             <i class="fa-solid fa-plus mr-2 text-xs"></i>
             <span>Buat Agenda Penyaluran</span>
         </button>
@@ -427,7 +425,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <?php foreach ($events as $ev): ?>
                                 <?php
                                 $isTersalurkan = ($ev['disbursement_status'] === 'tersalurkan');
-                                $isChecklistType = in_array($ev['program_type'], ['santunan_yatim', 'sembako']);
+                                $isChecklistType = ($totalRec > 0) || in_array($ev['program_type'], ['santunan_yatim', 'sembako']);
                                 $totalRec = (int)$ev['total_recipients'];
                                 $distRec = (int)$ev['distributed_count'];
                                 $pct = $totalRec > 0 ? round(($distRec / $totalRec) * 100) : ($isTersalurkan ? 100 : 0);
@@ -596,8 +594,8 @@ require_once __DIR__ . '/includes/sidebar.php';
                     </div>
                 </div>
 
-                <!-- Blok Pemilihan Penerima Manfaat (Khusus Santunan Yatim & Sembako pada saat Buat Agenda) -->
-                <div x-show="!isEdit && (form.program_type === 'santunan_yatim' || form.program_type === 'sembako')" class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 space-y-3">
+                <!-- Blok Pemilihan Penerima Manfaat (Tampil Lengkap / Global pada saat Buat Agenda) -->
+                <div x-show="!isEdit" class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 space-y-3">
                     <input type="hidden" name="beneficiaries_selection_active" value="1">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200/80 pb-2.5">
                         <div class="flex items-center gap-2">
@@ -605,7 +603,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 <i class="fa-solid fa-users"></i>
                             </span>
                             <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Pilih Penerima Manfaat</span>
-                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-bkrc-red-800 border border-rose-200 tabular-nums" x-text="selectedBenIds.length + ' dari ' + getFilteredBeneficiaries().length + ' dipilih'"></span>
+                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-bkrc-red-800 border border-rose-200 tabular-nums" x-text="selectedBenIds.length + ' dari ' + allBeneficiaries.length + ' dipilih'"></span>
                         </div>
                         <div class="flex items-center gap-2 text-xs">
                             <button type="button" @click="selectAll()" class="font-bold text-bkrc-red-800 hover:text-bkrc-red-950 transition hover:underline">
@@ -616,6 +614,23 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 Batal Pilih
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Filter Kategori Cepat (Global) -->
+                    <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        <span class="text-[11px] font-semibold text-slate-500 mr-1">Saring:</span>
+                        <button type="button" @click="beneficiaryFilter = 'semua'" :class="beneficiaryFilter === 'semua' ? 'bg-slate-800 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'" class="px-2.5 py-1 rounded-lg text-xs transition cursor-pointer">
+                            Semua (<span x-text="allBeneficiaries.length"></span>)
+                        </button>
+                        <button type="button" @click="beneficiaryFilter = 'yatim'" :class="beneficiaryFilter === 'yatim' ? 'bg-slate-800 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'" class="px-2.5 py-1 rounded-lg text-xs transition cursor-pointer">
+                            Anak Yatim (<span x-text="allBeneficiaries.filter(b => b.category === 'yatim').length"></span>)
+                        </button>
+                        <button type="button" @click="beneficiaryFilter = 'dhuafa_lansia'" :class="beneficiaryFilter === 'dhuafa_lansia' ? 'bg-slate-800 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'" class="px-2.5 py-1 rounded-lg text-xs transition cursor-pointer">
+                            Dhuafa & Lansia (<span x-text="allBeneficiaries.filter(b => ['dhuafa', 'lansia'].includes(b.category)).length"></span>)
+                        </button>
+                        <button type="button" @click="beneficiaryFilter = 'sembako'" :class="beneficiaryFilter === 'sembako' ? 'bg-slate-800 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'" class="px-2.5 py-1 rounded-lg text-xs transition cursor-pointer">
+                            Penerima Sembako (<span x-text="allBeneficiaries.filter(b => b.category === 'sembako').length"></span>)
+                        </button>
                     </div>
 
                     <!-- Daftar Checkbox Scrollable -->
@@ -655,7 +670,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                         </template>
                         <template x-if="getFilteredBeneficiaries().length === 0">
                             <div class="p-6 text-center text-xs text-slate-400">
-                                Tidak ditemukan data penerima aktif untuk kategori program ini.
+                                Tidak ditemukan data penerima aktif untuk saringan ini.
                             </div>
                         </template>
                     </div>
@@ -671,7 +686,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                 </div>
 
                 <!-- Info untuk Edit Mode -->
-                <div x-show="isEdit && (form.program_type === 'santunan_yatim' || form.program_type === 'sembako')" class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center justify-between gap-3">
+                <div x-show="isEdit" class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-circle-info text-blue-600 text-sm"></i>
                         <span>Daftar penerima kegiatan ini dikelola melalui <strong>Lembar Checklist</strong>.</span>
