@@ -9,8 +9,11 @@ require_once __DIR__ . '/includes/header.php';
 // Ambil Ringkasan Kas & Metrik
 $kasSummary = getKasSummary($pdo);
 
-// Ambil Agenda Tahun Berjalan (2026)
-$stmtAgenda = $pdo->query("SELECT * FROM annual_agendas WHERE year = 2026 ORDER BY month_num ASC");
+// Ambil Agenda Kegiatan (Tahun Berjalan & Mendatang)
+$stmtAgendaYears = $pdo->query("SELECT DISTINCT year FROM annual_agendas ORDER BY year ASC");
+$agendaYears = $stmtAgendaYears->fetchAll(PDO::FETCH_COLUMN);
+
+$stmtAgenda = $pdo->query("SELECT * FROM annual_agendas ORDER BY year ASC, month_num ASC");
 $agendas = $stmtAgenda->fetchAll();
 
 // Ambil 10 Donasi Terbaru (Uang & Sembako - Khusus Approved / Sah)
@@ -67,7 +70,7 @@ $recentPosts = $stmtPosts->fetchAll();
                     <i class="fa-solid fa-arrow-right text-[10px] text-stone-200"></i>
                 </a>
                 <a href="#agenda-kegiatan" class="min-h-[42px] px-4 py-2.5 rounded-lg bg-white/10 hover:bg-white/15 text-stone-100 font-medium text-xs sm:text-sm border border-white/20 transition inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
-                    <span>Lihat agenda 2026</span>
+                    <span>Lihat agenda kegiatan</span>
                 </a>
             </div>
         </div>
@@ -173,12 +176,12 @@ $recentPosts = $stmtPosts->fetchAll();
     </div>
 </section>
 
-<!-- 4. KALENDER AGENDA 2026 (Clean Card Grid, Quiet Status Marker) -->
-<section id="agenda-kegiatan" class="py-14 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+<!-- 4. KALENDER AGENDA KEGIATAN (Clean Card Grid, Quiet Status Marker) -->
+<section id="agenda-kegiatan" x-data="{ activeYear: 'all' }" class="py-14 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
         <div class="text-left">
             <h2 class="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">
-                Agenda kegiatan 2026
+                Agenda kegiatan
             </h2>
             <p class="text-stone-600 text-xs sm:text-sm mt-1">
                 Jadwal aksi lapangan, santunan berkala, dan agenda sosial pengurus.
@@ -190,15 +193,30 @@ $recentPosts = $stmtPosts->fetchAll();
         </a>
     </div>
 
+    <!-- Filter Tab Tahun -->
+    <?php if (count($agendaYears) > 1): ?>
+        <div class="flex items-center gap-1.5 mb-6 overflow-x-auto pb-1">
+            <span class="text-xs text-stone-500 mr-2 flex-shrink-0">Tahun:</span>
+            <button type="button" @click="activeYear = 'all'" :class="activeYear === 'all' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'" class="px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex-shrink-0">
+                Semua tahun
+            </button>
+            <?php foreach ($agendaYears as $y): ?>
+                <button type="button" @click="activeYear = '<?= $y ?>'" :class="activeYear === '<?= $y ?>' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'" class="px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex-shrink-0">
+                    Tahun <?= $y ?>
+                </button>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
     <!-- Agenda Grid: 4px aligned, quiet status -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <?php foreach ($agendas as $agenda): ?>
             <?php $isDone = ($agenda['status'] === 'terlaksana'); ?>
-            <div class="bg-white rounded-lg border border-stone-200/80 p-4 transition-colors duration-150 flex flex-col justify-between <?= $isDone ? 'bg-stone-50/50' : 'hover:border-stone-300' ?>">
+            <div x-show="activeYear === 'all' || activeYear === '<?= $agenda['year'] ?>'" class="bg-white rounded-lg border border-stone-200/80 p-4 transition-colors duration-150 flex flex-col justify-between <?= $isDone ? 'bg-stone-50/50' : 'hover:border-stone-300' ?>">
                 <div>
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs font-medium text-[#8b1e1e]">
-                            <?= htmlspecialchars($agenda['month_label']) ?> 2026
+                            <?= htmlspecialchars($agenda['month_label']) ?> <?= htmlspecialchars($agenda['year']) ?>
                         </span>
                         
                         <?php if ($isDone): ?>

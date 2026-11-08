@@ -1,24 +1,42 @@
 <?php
 /**
- * Halaman Agenda Tahunan BKRC 2026
+ * Halaman Agenda Tahunan BKRC
  */
-$pageTitle = 'Kalender Agenda 2026 — Bantuan Kemanusiaan Relawan Cluster';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/config/helpers.php';
 
-// Filter Kategori
+// Ambil Daftar Tahun yang Tersedia di Database
+$yearsStmt = $pdo->query("SELECT DISTINCT year FROM annual_agendas ORDER BY year ASC");
+$availableYears = $yearsStmt->fetchAll(PDO::FETCH_COLUMN);
+if (empty($availableYears)) {
+    $availableYears = [(int)date('Y')];
+}
+
+// Filter Tahun & Kategori
+$selectedYear = $_GET['tahun'] ?? 'semua';
 $selectedCategory = $_GET['kategori'] ?? 'semua';
-$query = "SELECT * FROM annual_agendas WHERE year = 2026";
+
+$query = "SELECT * FROM annual_agendas WHERE 1=1";
 $params = [];
+
+if ($selectedYear !== 'semua' && in_array((int)$selectedYear, $availableYears)) {
+    $query .= " AND year = ?";
+    $params[] = (int)$selectedYear;
+}
 
 if ($selectedCategory !== 'semua' && in_array($selectedCategory, ['rutin', 'sosial', 'internal', 'musyawarah'])) {
     $query .= " AND category = ?";
     $params[] = $selectedCategory;
 }
-$query .= " ORDER BY month_num ASC";
+$query .= " ORDER BY year ASC, month_num ASC";
 
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $agendas = $stmt->fetchAll();
+
+$yearLabel = ($selectedYear !== 'semua') ? " " . htmlspecialchars($selectedYear) : "";
+$pageTitle = "Kalender Agenda{$yearLabel} — Bantuan Kemanusiaan Relawan Cluster";
+require_once __DIR__ . '/includes/header.php';
 ?>
 
 <!-- Header Page (Warm Stone-900, Clean Civic Header) -->
@@ -26,13 +44,13 @@ $agendas = $stmt->fetchAll();
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight">Kalender agenda BKRC 2026</h1>
+                <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight">Kalender agenda BKRC<?= $yearLabel ?></h1>
                 <p class="text-stone-300 text-xs sm:text-sm mt-1">Rangkaian program sosial, silaturahmi relawan, santunan akbar, dan evaluasi tahunan.</p>
             </div>
             <div class="flex items-center gap-2 text-xs text-stone-400">
                 <a href="<?= getBaseUrl() ?>/index.php" class="hover:text-stone-200">Beranda</a>
                 <span>/</span>
-                <span class="text-stone-200 font-medium">Agenda 2026</span>
+                <span class="text-stone-200 font-medium">Agenda<?= $yearLabel ?></span>
             </div>
         </div>
     </div>
@@ -40,24 +58,40 @@ $agendas = $stmt->fetchAll();
 
 <!-- Main Content -->
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
-    <!-- Category Filter Tabs -->
-    <div class="flex flex-wrap items-center gap-1.5 mb-8 border-b border-stone-200/80 pb-4">
-        <span class="text-xs text-stone-500 mr-2">Filter:</span>
-        <a href="<?= getBaseUrl() ?>/agenda.php?kategori=semua" class="px-3 py-1.5 rounded-lg text-xs font-medium transition <?= $selectedCategory === 'semua' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200' ?>">
-            Semua agenda
-        </a>
-        <a href="<?= getBaseUrl() ?>/agenda.php?kategori=rutin" class="px-3 py-1.5 rounded-lg text-xs font-medium transition <?= $selectedCategory === 'rutin' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200' ?>">
-            Penyaluran rutin
-        </a>
-        <a href="<?= getBaseUrl() ?>/agenda.php?kategori=sosial" class="px-3 py-1.5 rounded-lg text-xs font-medium transition <?= $selectedCategory === 'sosial' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200' ?>">
-            Event sosial & santunan
-        </a>
-        <a href="<?= getBaseUrl() ?>/agenda.php?kategori=internal" class="px-3 py-1.5 rounded-lg text-xs font-medium transition <?= $selectedCategory === 'internal' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200' ?>">
-            Internal & silaturahmi
-        </a>
-        <a href="<?= getBaseUrl() ?>/agenda.php?kategori=musyawarah" class="px-3 py-1.5 rounded-lg text-xs font-medium transition <?= $selectedCategory === 'musyawarah' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200' ?>">
-            Musyawarah & LPJ
-        </a>
+    <!-- Filter Section (Tahun & Kategori) -->
+    <div class="space-y-3 mb-8 border-b border-stone-200/80 pb-5">
+        <!-- Filter Tahun -->
+        <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-xs text-stone-500 mr-2 min-w-[50px]">Tahun:</span>
+            <a href="<?= getBaseUrl() ?>/agenda.php?tahun=semua&kategori=<?= urlencode($selectedCategory) ?>" class="px-3 py-1.5 rounded-lg text-xs font-medium transition <?= $selectedYear === 'semua' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200' ?>">
+                Semua tahun
+            </a>
+            <?php foreach ($availableYears as $y): ?>
+                <a href="<?= getBaseUrl() ?>/agenda.php?tahun=<?= $y ?>&kategori=<?= urlencode($selectedCategory) ?>" class="px-3 py-1.5 rounded-lg text-xs font-medium transition <?= (string)$selectedYear === (string)$y ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200' ?>">
+                    Tahun <?= $y ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Filter Kategori -->
+        <div class="flex flex-wrap items-center gap-1.5 pt-1">
+            <span class="text-xs text-stone-500 mr-2 min-w-[50px]">Kategori:</span>
+            <a href="<?= getBaseUrl() ?>/agenda.php?tahun=<?= urlencode($selectedYear) ?>&kategori=semua" class="px-3 py-1.5 rounded-lg text-xs font-medium transition <?= $selectedCategory === 'semua' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200' ?>">
+                Semua agenda
+            </a>
+            <a href="<?= getBaseUrl() ?>/agenda.php?tahun=<?= urlencode($selectedYear) ?>&kategori=rutin" class="px-3 py-1.5 rounded-lg text-xs font-medium transition <?= $selectedCategory === 'rutin' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200' ?>">
+                Penyaluran rutin
+            </a>
+            <a href="<?= getBaseUrl() ?>/agenda.php?tahun=<?= urlencode($selectedYear) ?>&kategori=sosial" class="px-3 py-1.5 rounded-lg text-xs font-medium transition <?= $selectedCategory === 'sosial' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200' ?>">
+                Event sosial & santunan
+            </a>
+            <a href="<?= getBaseUrl() ?>/agenda.php?tahun=<?= urlencode($selectedYear) ?>&kategori=internal" class="px-3 py-1.5 rounded-lg text-xs font-medium transition <?= $selectedCategory === 'internal' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200' ?>">
+                Internal & silaturahmi
+            </a>
+            <a href="<?= getBaseUrl() ?>/agenda.php?tahun=<?= urlencode($selectedYear) ?>&kategori=musyawarah" class="px-3 py-1.5 rounded-lg text-xs font-medium transition <?= $selectedCategory === 'musyawarah' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200' ?>">
+                Musyawarah & LPJ
+            </a>
+        </div>
     </div>
 
     <!-- Timeline List View -->
@@ -76,7 +110,7 @@ $agendas = $stmt->fetchAll();
                     <div class="flex items-start gap-4 sm:gap-5">
                         <!-- Month Badge Box (Solid Matte) -->
                         <div class="w-16 h-16 rounded-xl bg-stone-900 text-stone-100 flex flex-col items-center justify-center flex-shrink-0 border border-stone-800">
-                            <span class="text-[10px] font-medium text-stone-400">2026</span>
+                            <span class="text-[10px] font-medium text-stone-400"><?= htmlspecialchars($agenda['year']) ?></span>
                             <span class="text-sm font-semibold tracking-tight text-white"><?= htmlspecialchars(substr($agenda['month_label'], 0, 3)) ?></span>
                             <span class="text-[9px] text-stone-400">#<?= $agenda['month_num'] ?></span>
                         </div>

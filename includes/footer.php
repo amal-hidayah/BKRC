@@ -52,7 +52,7 @@
                         </li>
                         <li>
                             <a href="<?= getBaseUrl() ?>/agenda.php" class="hover:text-stone-200 transition py-0.5 inline-block">
-                                Agenda kegiatan 2026
+                                Agenda kegiatan
                             </a>
                         </li>
                         <li>
