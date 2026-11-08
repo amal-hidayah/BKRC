@@ -76,7 +76,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // 4. Tambah / Edit Manual oleh Pengurus
+    // 4. Hapus Anggota / Relawan Permanen
+    if ($action === 'delete_member') {
+        $id = (int)($_POST['id'] ?? 0);
+
+        $stM = $pdo->prepare("SELECT full_name, member_code FROM members WHERE id = ?");
+        $stM->execute([$id]);
+        $targetMember = $stM->fetch();
+
+        if ($targetMember) {
+            // Null-kan relasi ke tabel donasi agar tidak merusak data historis pembukuan kas
+            $updDon = $pdo->prepare("UPDATE donations SET member_id = NULL WHERE member_id = ?");
+            $updDon->execute([$id]);
+
+            // Hapus data anggota
+            $stmtDel = $pdo->prepare("DELETE FROM members WHERE id = ?");
+            $stmtDel->execute([$id]);
+
+            setFlash('success', "Data anggota {$targetMember['full_name']} ({$targetMember['member_code']}) berhasil dihapus permanen.");
+        } else {
+            setFlash('error', 'Data anggota tidak ditemukan.');
+        }
+
+        header('Location: ' . getBaseUrl() . '/admin/members.php');
+        exit;
+    }
+
+    // 5. Tambah / Edit Manual oleh Pengurus
     if ($action === 'create' || $action === 'update') {
         $nik = trim($_POST['nik'] ?? '');
         $fullName = trim($_POST['full_name'] ?? '');
@@ -183,10 +209,11 @@ require_once __DIR__ . '/includes/sidebar.php';
     modalOpen: false, 
     rejectModal: false, 
     resignModal: false,
-    activeMember: { id: null, name: '', status: '' },
+    deleteModal: false,
+    activeMember: { id: null, name: '', status: '', code: '' },
     isEdit: false, 
     form: { id: '', nik: '', full_name: '', phone: '', cluster_block: '', rt_rw: 'RT 01 / RW 08', position: 'Relawan Lapangan', joined_date: '<?= date('Y-m-d') ?>', status: 'aktif' } 
-}" @keydown.escape.window="modalOpen = false; rejectModal = false; resignModal = false" class="flex-1 flex flex-col w-full">
+}" @keydown.escape.window="modalOpen = false; rejectModal = false; resignModal = false; deleteModal = false" class="flex-1 flex flex-col w-full">
 
     <!-- Topbar -->
     <header class="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 shadow-xs">
@@ -378,7 +405,7 @@ require_once __DIR__ . '/includes/sidebar.php';
 
                                                 <?php if ($isActive): ?>
                                                     <!-- Tombol Tandai Resign -->
-                                                    <button type="button" @click.stop="activeMember = { id: <?= $m['id'] ?>, name: '<?= htmlspecialchars(addslashes($m['full_name'])) ?>', status: 'resign' }; resignModal = true" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-rose-700 bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition" title="Ubah status ke Resign">
+                                                    <button type="button" @click.stop="activeMember = { id: <?= $m['id'] ?>, name: '<?= htmlspecialchars(addslashes($m['full_name'])) ?>', status: 'resign', code: '<?= htmlspecialchars(addslashes($m['member_code'])) ?>' }; resignModal = true" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-rose-700 bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition" title="Ubah status ke Resign">
                                                         <span>Tandai Resign</span>
                                                     </button>
                                                 <?php else: ?>
@@ -393,6 +420,11 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                         </button>
                                                     </form>
                                                 <?php endif; ?>
+
+                                                <!-- Tombol Hapus Permanen -->
+                                                <button type="button" @click.stop="activeMember = { id: <?= $m['id'] ?>, name: '<?= htmlspecialchars(addslashes($m['full_name'])) ?>', status: '<?= $m['status'] ?>', code: '<?= htmlspecialchars(addslashes($m['member_code'])) ?>' }; deleteModal = true" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition" title="Hapus Data Anggota">
+                                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                                </button>
                                             </div>
                                         <?php endif; ?>
                                     </td>
@@ -509,6 +541,29 @@ require_once __DIR__ . '/includes/sidebar.php';
                 <input type="hidden" name="new_status" value="resign">
                 <button type="button" @click="resignModal = false" class="px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">Batal</button>
                 <button type="submit" class="px-5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 shadow-xs transition">Ya, Tandai Resign</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Hapus Data Anggota -->
+    <div x-show="deleteModal" x-cloak @click.self="deleteModal = false" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" @keydown.escape.window="deleteModal = false">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 text-center">
+            <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 mx-auto flex items-center justify-center text-xl mb-3">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-900 mb-1">Hapus Data Anggota?</h3>
+            <p class="text-xs text-slate-600 leading-relaxed mb-4">
+                Apakah Anda yakin ingin menghapus data anggota <strong x-text="activeMember.name"></strong> (<span class="font-mono text-slate-700 font-semibold" x-text="activeMember.code"></span>)? Tindakan ini bersifat permanen dan data anggota akan dihapus dari sistem.
+            </p>
+            <form action="" method="POST" class="flex items-center justify-center gap-3">
+                <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                <input type="hidden" name="action" value="delete_member">
+                <input type="hidden" name="id" :value="activeMember.id">
+                <button type="button" @click="deleteModal = false" class="px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">Batal</button>
+                <button type="submit" class="px-5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-xs transition inline-flex items-center gap-1.5">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                    <span>Ya, Hapus Permanen</span>
+                </button>
             </form>
         </div>
     </div>
