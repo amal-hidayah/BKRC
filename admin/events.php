@@ -121,12 +121,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $disbursedTo = trim($_POST['disbursed_to'] ?? '');
         $markAllLogs = isset($_POST['mark_all_logs']) && $_POST['mark_all_logs'] === '1';
 
-        $stmt = $pdo->prepare("
-            UPDATE distribution_events 
-            SET disbursement_status = 'tersalurkan', disbursed_at = ?, disbursed_to = ?
-            WHERE id = ?
+        // Cek apakah ada logs pada acara ini, jika ada, sinkronkan total_cash_out & total_packages_out dengan checklist
+        $stLogSum = $pdo->prepare("
+            SELECT 
+                COUNT(*) as cnt, 
+                COALESCE(SUM(cash_amount), 0) as total_cash,
+                COUNT(CASE WHEN sembako_package_detail IS NOT NULL AND TRIM(sembako_package_detail) != '' THEN 1 END) as total_pkg
+            FROM distribution_logs 
+            WHERE event_id = ?
         ");
-        $stmt->execute([$disbursedAt, $disbursedTo, $id]);
+        $stLogSum->execute([$id]);
+        $logSummary = $stLogSum->fetch(PDO::FETCH_ASSOC);
+
+        if ($logSummary && (int)$logSummary['cnt'] > 0) {
+            $stmt = $pdo->prepare("
+                UPDATE distribution_events 
+                SET disbursement_status = 'tersalurkan', disbursed_at = ?, disbursed_to = ?, total_cash_out = ?, total_packages_out = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([$disbursedAt, $disbursedTo, (float)$logSummary['total_cash'], (int)$logSummary['total_pkg'], $id]);
+        } else {
+            $stmt = $pdo->prepare("
+                UPDATE distribution_events 
+                SET disbursement_status = 'tersalurkan', disbursed_at = ?, disbursed_to = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([$disbursedAt, $disbursedTo, $id]);
+        }
 
         if ($markAllLogs) {
             $pdo->prepare("

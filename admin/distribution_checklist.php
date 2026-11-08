@@ -19,6 +19,33 @@ if (!$event) {
     exit;
 }
 
+/**
+ * Sinkronisasi total anggaran kas dan total paket di distribution_events agar selalu klop 100% dengan akumulasi checklist
+ */
+function syncEventTotals(PDO $pdo, int $eventId): void {
+    $stCount = $pdo->prepare("SELECT COUNT(*) FROM distribution_logs WHERE event_id = ?");
+    $stCount->execute([$eventId]);
+    $count = (int)$stCount->fetchColumn();
+
+    if ($count > 0) {
+        $stLogs = $pdo->prepare("
+            SELECT 
+                COALESCE(SUM(cash_amount), 0) as total_cash,
+                COUNT(CASE WHEN sembako_package_detail IS NOT NULL AND TRIM(sembako_package_detail) != '' THEN 1 END) as total_pkg
+            FROM distribution_logs 
+            WHERE event_id = ?
+        ");
+        $stLogs->execute([$eventId]);
+        $res = $stLogs->fetch(PDO::FETCH_ASSOC);
+
+        $totalCash = (float)($res['total_cash'] ?? 0);
+        $totalPkg = (int)($res['total_pkg'] ?? 0);
+
+        $stUpd = $pdo->prepare("UPDATE distribution_events SET total_cash_out = ?, total_packages_out = ? WHERE id = ?");
+        $stUpd->execute([$totalCash, $totalPkg, $eventId]);
+    }
+}
+
 // Handle Mutasi Penyerahan / Batalkan (POST dengan CSRF)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -85,12 +112,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, ?, ?, ?, 'pending')
             ");
             $ins->execute([$eventId, $benId, $cashAmount, $packageDetail]);
-            setFlash('success', 'Penerima berhasil ditambahkan ke checklist kegiatan.');
+
+            // Sinkronkan total anggaran agenda dengan checklist
+            syncEventTotals($pdo, $eventId);
+
+            setFlash('success', 'Penerima berhasil ditambahkan ke checklist dan total anggaran agenda otomatis disinkronkan.');
         }
         header("Location: " . getBaseUrl() . "/admin/distribution_checklist.php?event_id={$eventId}");
         exit;
     }
+
+    if ($action === 'delete_recipient') {
+        $logId = (int)$_POST['log_id'];
+
+        $del = $pdo->prepare("DELETE FROM distribution_logs WHERE id = ? AND event_id = ?");
+        $del->execute([$logId, $eventId]);
+
+        // Sinkronkan total anggaran agenda setelah penerima dihapus
+        syncEventTotals($pdo, $eventId);
+
+        setFlash('success', 'Penerima berhasil dihapus dari checklist dan total anggaran otomatis disinkronkan.');
+        header("Location: " . getBaseUrl() . "/admin/distribution_checklist.php?event_id={$eventId}");
+        exit;
+    }
 }
+
+// Sinkronkan anggaran agenda secara otomatis agar data historis & baru selalu klop
+syncEventTotals($pdo, $eventId);
+
+// Re-fetch event agar data total anggaran selalu terbaru
+$stmtEvent->execute([$eventId]);
+$event = $stmtEvent->fetch();
 
 // Ambil Checklist Penerima pada Acara Ini
 $stmtLogs = $pdo->prepare("
@@ -224,6 +276,15 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="text-[10px] text-amber-200 font-semibold">Belum / Pending</div>
                 </div>
             </div>
+
+            <!-- Total Anggaran Terakumulasi -->
+            <div class="flex items-center justify-between text-xs text-slate-300 font-medium border-t border-slate-800 pt-3 mt-3">
+                <span class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-wallet text-amber-400"></i>
+                    Total Anggaran Sesi Ini:
+                </span>
+                <span class="font-extrabold text-amber-300 text-sm tabular-nums"><?= formatRupiah($totalCashAllocated) ?></span>
+            </div>
         </div>
 
         <!-- Section Title -->
@@ -339,10 +400,20 @@ require_once __DIR__ . '/includes/sidebar.php';
                                     <i class="fa-solid fa-rotate-left"></i>
                                 </button>
                             <?php else: ?>
-                                <button type="button" @click="openHandover(<?= htmlspecialchars($jsLogObj) ?>)" class="w-full sm:w-auto min-h-[44px] bg-bkrc-red-800 hover:bg-bkrc-red-900 active:bg-bkrc-red-950 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-xs transition flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-bkrc-red-800">
-                                    <i class="fa-solid fa-hand-holding-heart"></i>
-                                    <span>Serahkan Bantuan</span>
-                                </button>
+                                <div class="inline-flex items-center gap-2 w-full sm:w-auto">
+                                    <form action="" method="POST" class="inline" onsubmit="return confirm('Hapus <?= htmlspecialchars(addslashes($l['full_name'])) ?> dari daftar checklist ini? Total anggaran akan otomatis disinkronkan kembali.');">
+                                        <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                                        <input type="hidden" name="action" value="delete_recipient">
+                                        <input type="hidden" name="log_id" value="<?= $l['id'] ?>">
+                                        <button type="submit" class="w-11 h-11 rounded-xl inline-flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition" title="Hapus penerima dari checklist ini" aria-label="Hapus penerima">
+                                            <i class="fa-solid fa-trash-can text-sm"></i>
+                                        </button>
+                                    </form>
+                                    <button type="button" @click="openHandover(<?= htmlspecialchars($jsLogObj) ?>)" class="flex-1 sm:flex-initial min-h-[44px] bg-bkrc-red-800 hover:bg-bkrc-red-900 active:bg-bkrc-red-950 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-xs transition flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-bkrc-red-800">
+                                        <i class="fa-solid fa-hand-holding-heart"></i>
+                                        <span>Serahkan Bantuan</span>
+                                    </button>
+                                </div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -457,6 +528,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nominal Uang Santunan (Rp)</label>
                     <input type="number" name="cash_amount" value="350000" step="1000" class="w-full px-3 py-2.5 min-h-[44px] bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm font-mono text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:bg-white transition">
+                    <p class="text-[11px] text-slate-500 mt-1">Total anggaran agenda otomatis disinkronkan bertambah sesuai nominal ini.</p>
                 </div>
 
                 <div>
