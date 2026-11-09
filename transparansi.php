@@ -71,7 +71,7 @@ if (!empty($searchQuery)) {
             d.receipt_no LIKE ? 
             OR dn.full_name LIKE ? 
             OR m.full_name LIKE ? 
-            OR (d.is_anonymous = 1 AND 'hamba allah' LIKE ?)
+            OR (dn.is_anonymous = 1 AND 'hamba allah' LIKE ?)
             OR DATE_FORMAT(d.donation_date, '%Y-%m-%d') LIKE ?
             OR d.program_target LIKE ?
         )";
