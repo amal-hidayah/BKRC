@@ -50,9 +50,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $newEventId = $pdo->lastInsertId();
 
                 // Auto-isi daftar penerima yang aktif secara global (tanpa tersekat kategori)
-                $selectedBenIds = isset($_POST['selected_beneficiaries']) && is_array($_POST['selected_beneficiaries'])
-                    ? array_filter(array_map('intval', $_POST['selected_beneficiaries']))
-                    : [];
+                $selectedBenIds = [];
+                if (!empty($_POST['selected_beneficiaries_json'])) {
+                    $decoded = json_decode($_POST['selected_beneficiaries_json'], true);
+                    if (is_array($decoded)) {
+                        $selectedBenIds = array_filter(array_map('intval', $decoded));
+                    }
+                }
+                if (empty($selectedBenIds) && isset($_POST['selected_beneficiaries']) && is_array($_POST['selected_beneficiaries'])) {
+                    $selectedBenIds = array_filter(array_map('intval', $_POST['selected_beneficiaries']));
+                }
                 $hasSelectionControl = isset($_POST['beneficiaries_selection_active']);
 
                 if ($hasSelectionControl) {
@@ -300,10 +307,28 @@ require_once __DIR__ . '/includes/sidebar.php';
         }
     },
     selectAll() {
-        this.selectedBenIds = this.allBeneficiaries.map(b => b.id);
+        if (this.beneficiaryFilter === 'semua') {
+            this.selectedBenIds = this.allBeneficiaries.map(b => Number(b.id));
+        } else {
+            const filteredIds = this.getFilteredBeneficiaries().map(b => Number(b.id));
+            this.selectedBenIds = Array.from(new Set([...this.selectedBenIds, ...filteredIds]));
+        }
     },
     unselectAll() {
-        this.selectedBenIds = [];
+        if (this.beneficiaryFilter === 'semua') {
+            this.selectedBenIds = [];
+        } else {
+            const filteredIds = this.getFilteredBeneficiaries().map(b => Number(b.id));
+            this.selectedBenIds = this.selectedBenIds.filter(id => !filteredIds.includes(Number(id)));
+        }
+    },
+    toggleBeneficiary(id) {
+        id = Number(id);
+        if (this.selectedBenIds.includes(id)) {
+            this.selectedBenIds = this.selectedBenIds.filter(x => x !== id);
+        } else {
+            this.selectedBenIds.push(id);
+        }
     },
     calculatePerRecipient() {
         const count = this.selectedBenIds.length;
@@ -618,6 +643,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                 <!-- Blok Pemilihan Penerima Manfaat (Tampil Lengkap / Global pada saat Buat Agenda) -->
                 <div x-show="!isEdit" class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 space-y-3">
                     <input type="hidden" name="beneficiaries_selection_active" value="1">
+                    <input type="hidden" name="selected_beneficiaries_json" :value="JSON.stringify(selectedBenIds)">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200/80 pb-2.5">
                         <div class="flex items-center gap-2">
                             <span class="w-6 h-6 rounded-lg bg-bkrc-red-100 text-bkrc-red-800 flex items-center justify-center text-xs">
@@ -659,7 +685,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                         <template x-for="b in getFilteredBeneficiaries()" :key="b.id">
                             <label class="flex items-center justify-between p-2.5 hover:bg-white rounded-xl cursor-pointer transition select-none border border-transparent hover:border-slate-200">
                                 <div class="flex items-center gap-3 min-w-0">
-                                    <input type="checkbox" name="selected_beneficiaries[]" :value="b.id" x-model.number="selectedBenIds" class="w-4 h-4 rounded text-bkrc-red-800 focus:ring-bkrc-red-800 focus:ring-offset-0 border-slate-300 cursor-pointer">
+                                    <input type="checkbox" name="selected_beneficiaries[]" :value="b.id" :checked="selectedBenIds.includes(Number(b.id))" @change="toggleBeneficiary(b.id)" class="w-4 h-4 rounded text-bkrc-red-800 focus:ring-bkrc-red-800 focus:ring-offset-0 border-slate-300 cursor-pointer">
                                     <div class="min-w-0">
                                         <div class="flex items-center gap-2">
                                             <span class="text-xs sm:text-sm font-bold text-slate-900 truncate" x-text="b.full_name"></span>
@@ -740,9 +766,25 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <textarea name="notes" x-model="form.notes" rows="2" placeholder="Pendopo cluster, musholla, no rekening vendor..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:bg-white transition"></textarea>
                 </div>
 
-                <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
-                    <button type="button" @click="modalOpen = false" class="min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none">Batal</button>
-                    <button type="submit" class="min-h-[44px] bg-bkrc-red-800 hover:bg-bkrc-red-900 active:bg-bkrc-red-950 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-xs transition focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:ring-offset-2 focus-visible:outline-none">Simpan Penyaluran</button>
+                <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <template x-if="!isEdit && selectedBenIds.length === 0">
+                            <span class="text-[11px] text-amber-700 font-semibold flex items-center gap-1.5">
+                                <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+                                <span>0 penerima dipilih (Checklist akan kosong)</span>
+                            </span>
+                        </template>
+                        <template x-if="!isEdit && selectedBenIds.length > 0">
+                            <span class="text-[11px] text-emerald-700 font-semibold flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-check text-emerald-500"></i>
+                                <span x-text="selectedBenIds.length + ' penerima siap masuk checklist'"></span>
+                            </span>
+                        </template>
+                    </div>
+                    <div class="flex items-center justify-end gap-2">
+                        <button type="button" @click="modalOpen = false" class="min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none">Batal</button>
+                        <button type="submit" @click="if(!isEdit && selectedBenIds.length === 0 && !confirm('Perhatian: Anda belum memilih penerima manfaat (0 dipilih). Apakah Anda yakin ingin membuat kegiatan dengan checklist kosong?')) { $event.preventDefault(); }" class="min-h-[44px] bg-bkrc-red-800 hover:bg-bkrc-red-900 active:bg-bkrc-red-950 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-xs transition focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:ring-offset-2 focus-visible:outline-none">Simpan Penyaluran</button>
+                    </div>
                 </div>
             </form>
         </div>

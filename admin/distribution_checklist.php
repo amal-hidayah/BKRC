@@ -135,6 +135,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: " . getBaseUrl() . "/admin/distribution_checklist.php?event_id={$eventId}");
         exit;
     }
+
+    if ($action === 'populate_default_recipients') {
+        $targetGroup = $_POST['target_group'] ?? 'all'; // 'all', 'yatim', 'sembako'
+
+        if ($targetGroup === 'yatim') {
+            $stTarget = $pdo->query("SELECT id, full_name, category FROM beneficiaries WHERE category = 'yatim' AND status = 'layak_aktif'");
+        } elseif ($targetGroup === 'sembako') {
+            $stTarget = $pdo->query("SELECT id, full_name, category FROM beneficiaries WHERE category IN ('sembako', 'dhuafa', 'lansia') AND status = 'layak_aktif'");
+        } else {
+            $stTarget = $pdo->query("SELECT id, full_name, category FROM beneficiaries WHERE status = 'layak_aktif'");
+        }
+        $eligibleBens = $stTarget->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!empty($eligibleBens)) {
+            // Filter yang belum ada di event ini
+            $stExisting = $pdo->prepare("SELECT beneficiary_id FROM distribution_logs WHERE event_id = ?");
+            $stExisting->execute([$eventId]);
+            $existingIds = $stExisting->fetchAll(PDO::FETCH_COLUMN);
+            $toInsert = array_filter($eligibleBens, function($b) use ($existingIds) {
+                return !in_array((int)$b['id'], array_map('intval', $existingIds));
+            });
+
+            if (!empty($toInsert)) {
+                $benCount = count($toInsert);
+                $initialCash = (float)($event['total_cash_out'] ?? 0);
+                $cashPerPerson = ($initialCash > 0) ? round($initialCash / $benCount) : 0;
+                
+                $initialPkg = (int)($event['total_packages_out'] ?? 0);
+                if ($initialPkg > 0) {
+                    $pkgPerPerson = ($initialPkg >= $benCount) ? round($initialPkg / $benCount) : 1;
+                    $pkgDetail = "{$pkgPerPerson} Paket Bantuan (Total: {$initialPkg} Paket)";
+                } elseif ($event['program_type'] === 'santunan_yatim') {
+                    $pkgDetail = 'Santunan Tunai & Perlengkapan';
+                } elseif ($event['program_type'] === 'sembako') {
+                    $pkgDetail = '1 Paket Sembako Lengkap';
+                } else {
+                    $pkgDetail = 'Bantuan / Santunan Program';
+                }
+
+                $ins = $pdo->prepare("INSERT INTO distribution_logs (event_id, beneficiary_id, cash_amount, sembako_package_detail, status) VALUES (?, ?, ?, ?, 'pending')");
+                foreach ($toInsert as $b) {
+                    $ins->execute([$eventId, $b['id'], $cashPerPerson, $pkgDetail]);
+                }
+
+                syncEventTotals($pdo, $eventId);
+                setFlash('success', 'Berhasil memuat ' . count($toInsert) . ' penerima manfaat ke dalam checklist!');
+            } else {
+                setFlash('error', 'Seluruh penerima pada kelompok ini sudah ada di dalam checklist.');
+            }
+        } else {
+            setFlash('error', 'Tidak ditemukan data penerima aktif untuk kelompok ini.');
+        }
+        header("Location: " . getBaseUrl() . "/admin/distribution_checklist.php?event_id={$eventId}");
+        exit;
+    }
 }
 
 // Sinkronkan anggaran agenda secara otomatis agar data historis & baru selalu klop
@@ -298,9 +353,40 @@ require_once __DIR__ . '/includes/sidebar.php';
         <!-- Beneficiary Checklist Cards -->
         <div class="space-y-3">
             <?php if (empty($logs)): ?>
-                <div class="bg-white rounded-2xl p-8 text-center text-slate-400 border border-slate-200">
-                    <i class="fa-solid fa-list-check text-4xl mb-2 text-slate-300 block"></i>
-                    Belum ada penerima di checklist kegiatan ini. Klik tombol <strong>Tambah Penerima</strong> di atas.
+                <div class="bg-white rounded-2xl p-6 sm:p-8 text-center border border-slate-200 shadow-xs space-y-4">
+                    <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-2xl border border-amber-200">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Checklist Penyaluran Masih Kosong</h3>
+                        <p class="text-xs text-slate-500 max-w-md mx-auto mt-1 leading-relaxed">
+                            Belum ada penerima manfaat yang terdaftar di sesi ini. Anda dapat memuat seluruh penerima aktif secara instan dengan pembagian anggaran merata dari total <strong><?= formatRupiah($event['total_cash_out']) ?></strong>.
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                        <form action="" method="POST" class="inline">
+                            <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                            <input type="hidden" name="action" value="populate_default_recipients">
+                            <input type="hidden" name="target_group" value="all">
+                            <button type="submit" class="px-4 py-2.5 rounded-xl text-xs font-bold bg-bkrc-red-800 hover:bg-bkrc-red-900 active:bg-bkrc-red-950 text-white shadow-xs transition inline-flex items-center gap-1.5 cursor-pointer">
+                                <i class="fa-solid fa-users text-xs"></i>
+                                <span>Tarik Semua Penerima Aktif</span>
+                            </button>
+                        </form>
+                        <form action="" method="POST" class="inline">
+                            <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                            <input type="hidden" name="action" value="populate_default_recipients">
+                            <input type="hidden" name="target_group" value="<?= ($event['program_type'] === 'santunan_yatim') ? 'yatim' : 'sembako' ?>">
+                            <button type="submit" class="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-900 active:bg-slate-950 text-white shadow-xs transition inline-flex items-center gap-1.5 cursor-pointer">
+                                <i class="fa-solid fa-hand-holding-heart text-xs"></i>
+                                <span>Tarik Sesuai Kategori Program (<?= ($event['program_type'] === 'santunan_yatim') ? 'Khusus Yatim' : 'Sembako & Dhuafa' ?>)</span>
+                            </button>
+                        </form>
+                        <button @click="addModal = true" class="px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 transition inline-flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-user-plus text-xs"></i>
+                            <span>Pilih Manual Satu Per Satu</span>
+                        </button>
+                    </div>
                 </div>
             <?php else: ?>
                 <?php foreach ($logs as $idx => $l): ?>
@@ -525,15 +611,23 @@ require_once __DIR__ . '/includes/sidebar.php';
                     </select>
                 </div>
 
+                <?php
+                $suggestedCash = ($totalBeneficiaries > 0 && $totalCashAllocated > 0) 
+                    ? round($totalCashAllocated / $totalBeneficiaries) 
+                    : ((float)$event['total_cash_out'] > 0 ? (int)$event['total_cash_out'] : 350000);
+                $suggestedPackageDetail = ($event['program_type'] === 'santunan_yatim') 
+                    ? 'Santunan Tunai & Perlengkapan' 
+                    : '1 Paket Sembako Lengkap';
+                ?>
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nominal Uang Santunan (Rp)</label>
-                    <input type="number" name="cash_amount" value="350000" step="1000" class="w-full px-3 py-2.5 min-h-[44px] bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm font-mono text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:bg-white transition">
+                    <input type="number" name="cash_amount" value="<?= $suggestedCash ?>" step="1000" class="w-full px-3 py-2.5 min-h-[44px] bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm font-mono text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:bg-white transition">
                     <p class="text-[11px] text-slate-500 mt-1">Total anggaran agenda otomatis disinkronkan bertambah sesuai nominal ini.</p>
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Rincian Paket Sembako / Bingkisan</label>
-                    <input type="text" name="sembako_package_detail" value="Paket Beras 5kg & Minyak" class="w-full px-3 py-2.5 min-h-[44px] bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:bg-white transition">
+                    <input type="text" name="sembako_package_detail" value="<?= htmlspecialchars($suggestedPackageDetail) ?>" class="w-full px-3 py-2.5 min-h-[44px] bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800 focus-visible:bg-white transition">
                 </div>
 
                 <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
