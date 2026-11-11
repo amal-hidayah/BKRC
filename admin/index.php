@@ -7,33 +7,113 @@ $pageTitle = 'Dashboard Ringkasan Eksekutif';
 require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/sidebar.php';
 
-$kasSummary = getKasSummary($pdo);
-
-// Data untuk Bar Chart Tren Penerimaan Kas Bulanan (Tahun Berjalan 2026 s/d Bulan Berjalan)
-$currentYear = (int)date('Y');
-$currentMonth = (int)date('n'); // Bulan berjalan
-$monthlyDonations = [];
-$monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-
-// Query kas masuk approved per bulan untuk tahun berjalan
-$stmtMonthly = $pdo->prepare("
-    SELECT MONTH(donation_date) as bln, SUM(amount) as total 
-    FROM donations 
-    WHERE type = 'uang' AND status = 'approved' AND YEAR(donation_date) = ?
-    GROUP BY MONTH(donation_date)
+// Ambil daftar tahun unik dari data transaksi donasi & agenda penyaluran
+$stmtYears = $pdo->query("
+    SELECT DISTINCT yr FROM (
+        SELECT DATE_FORMAT(donation_date, '%Y') as yr FROM donations WHERE donation_date IS NOT NULL AND donation_date != '0000-00-00'
+        UNION
+        SELECT DATE_FORMAT(event_date, '%Y') as yr FROM distribution_events WHERE event_date IS NOT NULL AND event_date != '0000-00-00'
+    ) t WHERE yr IS NOT NULL ORDER BY yr DESC
 ");
-$stmtMonthly->execute([$currentYear]);
-$dbMonthly = [];
-while ($row = $stmtMonthly->fetch()) {
-    $dbMonthly[(int)$row['bln']] = (float)$row['total'];
+$availableYears = $stmtYears->fetchAll(PDO::FETCH_COLUMN);
+$currentRealYear = (int)date('Y');
+if (!in_array((string)$currentRealYear, $availableYears)) {
+    $availableYears[] = (string)$currentRealYear;
+}
+$availableYears = array_values(array_filter(array_unique($availableYears), fn($y) => !empty($y) && is_numeric($y)));
+rsort($availableYears);
+
+// Pilihan Periode Tahun (Default: Tahun Berjalan)
+$selectedYear = trim($_GET['tahun'] ?? (string)$currentRealYear);
+if ($selectedYear !== 'semua' && !ctype_digit($selectedYear)) {
+    $selectedYear = (string)$currentRealYear;
 }
 
-// Hanya isi data hingga bulan berjalan (memotong bulan yang belum terjadi)
-$chartLabels = [];
-$chartData = [];
-for ($m = 1; $m <= $currentMonth; $m++) {
-    $chartLabels[] = $monthLabels[$m - 1];
-    $chartData[] = $dbMonthly[$m] ?? 0;
+if ($selectedYear === 'semua') {
+    $kasSummary = getKasSummary($pdo, null);
+    $displayYearLabel = 'Semua Periode Tahun';
+} else {
+    $kasSummary = getKasSummary($pdo, (int)$selectedYear);
+    $displayYearLabel = 'Tahun ' . $selectedYear;
+}
+
+// Data untuk Dual Bar Chart: Penerimaan Kas vs Realisasi Pengeluaran Bulanan (Jan - Des)
+$monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+// 1. Query Kas Masuk Approved per Bulan
+if ($selectedYear === 'semua') {
+    $stmtMonthlyIn = $pdo->query("
+        SELECT MONTH(donation_date) as bln, SUM(amount) as total 
+        FROM donations 
+        WHERE type = 'uang' AND status = 'approved'
+        GROUP BY MONTH(donation_date)
+    ");
+} else {
+    $stmtMonthlyIn = $pdo->prepare("
+        SELECT MONTH(donation_date) as bln, SUM(amount) as total 
+        FROM donations 
+        WHERE type = 'uang' AND status = 'approved' AND YEAR(donation_date) = ?
+        GROUP BY MONTH(donation_date)
+    ");
+    $stmtMonthlyIn->execute([(int)$selectedYear]);
+}
+$dbMonthlyIn = [];
+while ($row = $stmtMonthlyIn->fetch()) {
+    $dbMonthlyIn[(int)$row['bln']] = (float)$row['total'];
+}
+
+// 2. Query Realisasi Pengeluaran Kas per Bulan (Tersalurkan)
+if ($selectedYear === 'semua') {
+    $stmtMonthlyOut = $pdo->query("
+        SELECT MONTH(e.event_date) as bln, SUM(
+            CASE 
+                WHEN e.disbursement_status = 'tersalurkan' THEN e.total_cash_out
+                ELSE COALESCE(part.log_sum, 0)
+            END
+        ) as total
+        FROM distribution_events e
+        LEFT JOIN (
+            SELECT event_id, SUM(cash_amount) as log_sum 
+            FROM distribution_logs 
+            WHERE status = 'distributed' 
+            GROUP BY event_id
+        ) part ON e.id = part.event_id
+        WHERE (e.disbursement_status = 'tersalurkan' OR COALESCE(part.log_sum, 0) > 0)
+        GROUP BY MONTH(e.event_date)
+    ");
+} else {
+    $stmtMonthlyOut = $pdo->prepare("
+        SELECT MONTH(e.event_date) as bln, SUM(
+            CASE 
+                WHEN e.disbursement_status = 'tersalurkan' THEN e.total_cash_out
+                ELSE COALESCE(part.log_sum, 0)
+            END
+        ) as total
+        FROM distribution_events e
+        LEFT JOIN (
+            SELECT event_id, SUM(cash_amount) as log_sum 
+            FROM distribution_logs 
+            WHERE status = 'distributed' 
+            GROUP BY event_id
+        ) part ON e.id = part.event_id
+        WHERE (e.disbursement_status = 'tersalurkan' OR COALESCE(part.log_sum, 0) > 0)
+          AND YEAR(e.event_date) = ?
+        GROUP BY MONTH(e.event_date)
+    ");
+    $stmtMonthlyOut->execute([(int)$selectedYear]);
+}
+$dbMonthlyOut = [];
+while ($row = $stmtMonthlyOut->fetch()) {
+    $dbMonthlyOut[(int)$row['bln']] = (float)$row['total'];
+}
+
+// Susun data 12 bulan penuh (Januari s/d Desember)
+$chartLabels = $monthLabels;
+$chartDataIn = [];
+$chartDataOut = [];
+for ($m = 1; $m <= 12; $m++) {
+    $chartDataIn[] = (float)($dbMonthlyIn[$m] ?? 0);
+    $chartDataOut[] = (float)($dbMonthlyOut[$m] ?? 0);
 }
 
 // Action Items (Perlu Tindakan) Real-Time
@@ -103,11 +183,26 @@ $recentEvents = $pdo->query("
         </div>
 
         <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Filter Dropdown Periode Tahun di Topbar -->
+            <form method="GET" class="inline-flex items-center">
+                <div class="relative">
+                    <select name="tahun" onchange="this.form.submit()" class="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs text-slate-800 font-bold rounded-xl px-3 py-2.5 min-h-[44px] pr-8 focus:outline-none focus:ring-2 focus:ring-bkrc-red-800 transition shadow-2xs appearance-none cursor-pointer">
+                        <option value="semua" <?= $selectedYear === 'semua' ? 'selected' : '' ?>>Semua Tahun</option>
+                        <?php foreach ($availableYears as $yr): ?>
+                            <option value="<?= htmlspecialchars($yr) ?>" <?= $selectedYear === (string)$yr ? 'selected' : '' ?>>Tahun <?= htmlspecialchars($yr) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                        <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                    </div>
+                </div>
+            </form>
+
             <a href="<?= getBaseUrl() ?>/admin/donations.php" class="inline-flex items-center justify-center bg-bkrc-red-800 hover:bg-bkrc-red-900 active:bg-bkrc-red-950 text-white font-bold text-xs sm:text-sm px-4 py-2.5 min-h-[44px] rounded-xl transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bkrc-red-800">
-                <i class="fa-solid fa-plus mr-1.5 text-xs"></i> <span>Catat Kas Masuk</span>
+                <i class="fa-solid fa-plus mr-1.5 text-xs"></i> <span class="hidden sm:inline">Catat Kas Masuk</span><span class="sm:hidden">Catat</span>
             </a>
-            <a href="<?= getBaseUrl() ?>/admin/lpj.php" class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm px-4 py-2.5 min-h-[44px] rounded-xl border border-slate-200 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
-                <i class="fa-solid fa-print text-slate-500"></i> <span>Cetak LPJ</span>
+            <a href="<?= getBaseUrl() ?>/admin/lpj.php?tahun=<?= $selectedYear !== 'semua' ? urlencode($selectedYear) : date('Y') ?>" class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm px-4 py-2.5 min-h-[44px] rounded-xl border border-slate-200 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
+                <i class="fa-solid fa-print text-slate-500"></i> <span class="hidden sm:inline">Cetak LPJ</span>
             </a>
         </div>
     </header>
@@ -234,7 +329,7 @@ $recentEvents = $pdo->query("
                         <?= formatRupiah($kasSummary['saldo_kas_riil']) ?>
                     </div>
                     <div class="text-[11px] text-slate-400 mt-1">
-                        Saldo kas riil setelah realisasi penyaluran keluar
+                        <?= ($selectedYear !== 'semua') ? 'Realisasi pembukuan kas tahun ' . htmlspecialchars($selectedYear) : 'Akumulasi pembukuan seluruh periode tahun' ?>
                     </div>
                 </div>
                 <div class="text-xs text-slate-300 border-t border-slate-800 pt-3 mt-3 flex items-center justify-between">
@@ -298,18 +393,23 @@ $recentEvents = $pdo->query("
             </div>
         </div>
 
-        <!-- Visualisasi Statistik Bulanan -->
+        <!-- Visualisasi Statistik Bulanan: Dual Bar Chart Penerimaan vs Realisasi Pengeluaran -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <!-- Bar Chart: Donasi Masuk Bulanan -->
+            <!-- Bar Chart: Penerimaan & Realisasi Pengeluaran Bulanan -->
             <div class="lg:col-span-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div class="flex items-center justify-between mb-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                     <div>
-                        <h2 class="text-sm font-bold text-slate-900 tracking-tight">Penerimaan Donasi & Kas Bulanan (Tahun <?= $currentYear ?>)</h2>
-                        <p class="text-xs text-slate-500">Menampilkan realisasi dana masuk terverifikasi s/d <?= $monthLabels[$currentMonth - 1] ?> <?= $currentYear ?></p>
+                        <h2 class="text-sm font-bold text-slate-900 tracking-tight">Penerimaan & Realisasi Pengeluaran (<?= htmlspecialchars($displayYearLabel) ?>)</h2>
+                        <p class="text-xs text-slate-500">Perbandingan kas masuk terverifikasi dan realisasi penyaluran keluar per bulan</p>
                     </div>
-                    <span class="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-                        Jan – Nov <?= $currentYear ?>
-                    </span>
+                    <form method="GET" class="inline-flex items-center gap-1.5">
+                        <select name="tahun" onchange="this.form.submit()" class="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs text-slate-700 font-bold rounded-xl px-3 py-1.5 min-h-[36px] focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer">
+                            <option value="semua" <?= $selectedYear === 'semua' ? 'selected' : '' ?>>Semua Tahun</option>
+                            <?php foreach ($availableYears as $yr): ?>
+                                <option value="<?= htmlspecialchars($yr) ?>" <?= $selectedYear === (string)$yr ? 'selected' : '' ?>>Tahun <?= htmlspecialchars($yr) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </form>
                 </div>
                 <div class="h-64 sm:h-72">
                     <canvas id="donationBarChart"></canvas>
@@ -480,7 +580,7 @@ $recentEvents = $pdo->query("
     </main>
 </div>
 
-<!-- Chart.js Configuration: Bar Chart Capped at November 2026 -->
+<!-- Chart.js Configuration: Dual Bar Chart (Penerimaan vs Realisasi Pengeluaran) -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const barCtx = document.getElementById('donationBarChart').getContext('2d');
@@ -488,24 +588,53 @@ document.addEventListener('DOMContentLoaded', function() {
         type: 'bar',
         data: {
             labels: <?= json_encode($chartLabels) ?>,
-            datasets: [{
-                label: 'Kas Masuk (Rp)',
-                data: <?= json_encode($chartData) ?>,
-                backgroundColor: '#991b1b',
-                hoverBackgroundColor: '#7f1d1d',
-                borderRadius: 6,
-                borderSkipped: false
-            }]
+            datasets: [
+                {
+                    label: 'Penerimaan Kas (Masuk)',
+                    data: <?= json_encode($chartDataIn) ?>,
+                    backgroundColor: '#059669',
+                    hoverBackgroundColor: '#047857',
+                    borderRadius: 4,
+                    borderSkipped: false
+                },
+                {
+                    label: 'Realisasi Pengeluaran (Keluar)',
+                    data: <?= json_encode($chartDataOut) ?>,
+                    backgroundColor: '#991b1b',
+                    hoverBackgroundColor: '#7f1d1d',
+                    borderRadius: 4,
+                    borderSkipped: false
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        boxWidth: 12,
+                        boxHeight: 12,
+                        usePointStyle: true,
+                        pointStyle: 'rectRounded',
+                        font: { size: 11, weight: '600' },
+                        color: '#475569',
+                        padding: 15
+                    }
+                },
                 tooltip: {
+                    backgroundColor: '#0f172a',
+                    titleFont: { size: 12, weight: 'bold' },
+                    bodyFont: { size: 12 },
+                    padding: 10,
+                    cornerRadius: 8,
                     callbacks: {
                         label: function(context) {
-                            return 'Rp ' + Number(context.raw).toLocaleString('id-ID');
+                            const val = Number(context.raw) || 0;
+                            return ' ' + context.dataset.label + ': Rp ' + val.toLocaleString('id-ID');
                         }
                     }
                 }
@@ -516,15 +645,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     ticks: {
                         callback: function(value) {
                             if (value === 0) return '0';
-                            return 'Rp ' + (value / 1000000) + ' Jt';
+                            if (value >= 1000000) {
+                                return 'Rp ' + (value / 1000000).toLocaleString('id-ID') + ' Jt';
+                            }
+                            return 'Rp ' + (value / 1000).toLocaleString('id-ID') + ' Rb';
                         },
-                        font: { size: 10 }
+                        font: { size: 10 },
+                        color: '#64748b'
                     },
                     grid: { color: '#f1f5f9' }
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { font: { size: 11 } }
+                    ticks: { font: { size: 11, weight: '500' }, color: '#475569' }
                 }
             }
         }
