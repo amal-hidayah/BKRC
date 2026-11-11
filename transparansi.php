@@ -101,16 +101,73 @@ $stmtDonations = $pdo->prepare($queryDonations);
 $stmtDonations->execute($paramsDonation);
 $donations = $stmtDonations->fetchAll();
 
+// Daftar Kategori Program Penyaluran
+$programCategories = [
+    'santunan_yatim' => 'Santunan Anak Yatim',
+    'sembako'        => 'Bantuan Sembako',
+    'event'          => 'Event Organisasi',
+    'pinjaman'       => 'Pinjaman Qardh',
+    'lainnya'        => 'Penyaluran Lainnya'
+];
+
+// Query daftar bulan & tahun yang tersedia untuk filter penyaluran (Events)
+$stmtEvMonths = $pdo->query("
+    SELECT DISTINCT DATE_FORMAT(event_date, '%Y-%m') as ym, DATE_FORMAT(event_date, '%m') as m, DATE_FORMAT(event_date, '%Y') as y
+    FROM distribution_events 
+    WHERE event_date IS NOT NULL
+    ORDER BY ym DESC
+");
+$availableEvMonths = $stmtEvMonths->fetchAll();
+
+// Parameter filter untuk Realisasi Penyaluran
+$evMonthFilter = trim($_GET['ev_bulan'] ?? 'semua');
+$evCatFilter = trim($_GET['ev_kategori'] ?? 'semua');
+$evSearchQuery = trim($_GET['ev_q'] ?? '');
+
+$whereEvClauses = [];
+$paramsEvents = [];
+
+// Filter Bulan / Periode (format YYYY-MM atau YYYY)
+if (!empty($evMonthFilter) && $evMonthFilter !== 'semua') {
+    if (strlen($evMonthFilter) === 4) {
+        $whereEvClauses[] = "DATE_FORMAT(e.event_date, '%Y') = ?";
+        $paramsEvents[] = $evMonthFilter;
+    } else {
+        $whereEvClauses[] = "DATE_FORMAT(e.event_date, '%Y-%m') = ?";
+        $paramsEvents[] = $evMonthFilter;
+    }
+}
+
+// Filter Kategori Program
+if (!empty($evCatFilter) && $evCatFilter !== 'semua' && isset($programCategories[$evCatFilter])) {
+    $whereEvClauses[] = "e.program_type = ?";
+    $paramsEvents[] = $evCatFilter;
+}
+
+// Pencarian Kata Kunci (Nama Acara / Penerima PIC / Catatan)
+if (!empty($evSearchQuery)) {
+    $termEv = "%{$evSearchQuery}%";
+    $whereEvClauses[] = "(e.event_name LIKE ? OR e.disbursed_to LIKE ? OR e.notes LIKE ?)";
+    $paramsEvents[] = $termEv;
+    $paramsEvents[] = $termEv;
+    $paramsEvents[] = $termEv;
+}
+
+$whereEvSql = !empty($whereEvClauses) ? "WHERE " . implode(" AND ", $whereEvClauses) : "";
+
 // Ambil Riwayat Penyaluran (Events)
-$stmtEvents = $pdo->query("
+$queryEvents = "
     SELECT e.*, 
         COUNT(l.id) as total_recipients,
         SUM(CASE WHEN l.status = 'distributed' THEN 1 ELSE 0 END) as distributed_recipients
     FROM distribution_events e
     LEFT JOIN distribution_logs l ON e.id = l.event_id
+    {$whereEvSql}
     GROUP BY e.id
-    ORDER BY e.event_date DESC
-");
+    ORDER BY e.event_date DESC, e.id DESC
+";
+$stmtEvents = $pdo->prepare($queryEvents);
+$stmtEvents->execute($paramsEvents);
 $events = $stmtEvents->fetchAll();
 ?>
 
@@ -200,6 +257,9 @@ $events = $stmtEvents->fetchAll();
                 <form method="GET" action="<?= getBaseUrl() ?>/transparansi.php" class="flex flex-wrap items-center gap-2">
                     <input type="hidden" name="tipe" value="<?= htmlspecialchars($typeFilter) ?>">
                     <input type="hidden" name="kategori" value="<?= htmlspecialchars($catFilter) ?>">
+                    <input type="hidden" name="ev_bulan" value="<?= htmlspecialchars($evMonthFilter) ?>">
+                    <input type="hidden" name="ev_kategori" value="<?= htmlspecialchars($evCatFilter) ?>">
+                    <input type="hidden" name="ev_q" value="<?= htmlspecialchars($evSearchQuery) ?>">
 
                     <!-- 1. Filter Pilihan Bulan -->
                     <select name="bulan" onchange="this.form.submit()" class="bg-white border border-stone-300 rounded-lg text-xs px-2.5 py-1.5 min-h-[36px] text-stone-700 focus:outline-none focus:border-bkrc-red-800 transition">
@@ -233,7 +293,7 @@ $events = $stmtEvents->fetchAll();
 
                     <!-- Tombol Reset / Bersihkan Filter -->
                     <?php if (!empty($searchQuery) || ($monthFilter !== 'semua' && !empty($monthFilter)) || $typeFilter !== 'semua'): ?>
-                        <a href="<?= getBaseUrl() ?>/transparansi.php" class="bg-stone-100 hover:bg-stone-200 text-stone-600 font-medium px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs transition inline-flex items-center gap-1" title="Bersihkan pencarian & filter">
+                        <a href="<?= getBaseUrl() ?>/transparansi.php?ev_bulan=<?= urlencode($evMonthFilter) ?>&ev_kategori=<?= urlencode($evCatFilter) ?>&ev_q=<?= urlencode($evSearchQuery) ?>" class="bg-stone-100 hover:bg-stone-200 text-stone-600 font-medium px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs transition inline-flex items-center gap-1" title="Bersihkan pencarian & filter kas">
                             <i class="fa-solid fa-xmark text-[11px]"></i> Reset
                         </a>
                     <?php endif; ?>
@@ -241,13 +301,13 @@ $events = $stmtEvents->fetchAll();
 
                 <!-- 3. Tombol Filter Kategori (Semua / Uang kas / Sembako) -->
                 <div class="flex items-center gap-1 pl-0 sm:pl-2 border-t sm:border-t-0 sm:border-l border-stone-200 pt-2 sm:pt-0">
-                    <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=semua&kategori=<?= urlencode($catFilter) ?>&bulan=<?= urlencode($monthFilter) ?>&q=<?= urlencode($searchQuery) ?>" class="px-2.5 py-1.5 min-h-[36px] inline-flex items-center rounded-lg font-medium transition <?= $typeFilter === 'semua' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
+                    <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=semua&kategori=<?= urlencode($catFilter) ?>&bulan=<?= urlencode($monthFilter) ?>&q=<?= urlencode($searchQuery) ?>&ev_bulan=<?= urlencode($evMonthFilter) ?>&ev_kategori=<?= urlencode($evCatFilter) ?>&ev_q=<?= urlencode($evSearchQuery) ?>" class="px-2.5 py-1.5 min-h-[36px] inline-flex items-center rounded-lg font-medium transition <?= $typeFilter === 'semua' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
                         Semua
                     </a>
-                    <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=uang&kategori=<?= urlencode($catFilter) ?>&bulan=<?= urlencode($monthFilter) ?>&q=<?= urlencode($searchQuery) ?>" class="px-2.5 py-1.5 min-h-[36px] inline-flex items-center rounded-lg font-medium transition <?= $typeFilter === 'uang' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
+                    <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=uang&kategori=<?= urlencode($catFilter) ?>&bulan=<?= urlencode($monthFilter) ?>&q=<?= urlencode($searchQuery) ?>&ev_bulan=<?= urlencode($evMonthFilter) ?>&ev_kategori=<?= urlencode($evCatFilter) ?>&ev_q=<?= urlencode($evSearchQuery) ?>" class="px-2.5 py-1.5 min-h-[36px] inline-flex items-center rounded-lg font-medium transition <?= $typeFilter === 'uang' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
                         Uang kas
                     </a>
-                    <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=sembako&kategori=<?= urlencode($catFilter) ?>&bulan=<?= urlencode($monthFilter) ?>&q=<?= urlencode($searchQuery) ?>" class="px-2.5 py-1.5 min-h-[36px] inline-flex items-center rounded-lg font-medium transition <?= $typeFilter === 'sembako' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
+                    <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=sembako&kategori=<?= urlencode($catFilter) ?>&bulan=<?= urlencode($monthFilter) ?>&q=<?= urlencode($searchQuery) ?>&ev_bulan=<?= urlencode($evMonthFilter) ?>&ev_kategori=<?= urlencode($evCatFilter) ?>&ev_q=<?= urlencode($evSearchQuery) ?>" class="px-2.5 py-1.5 min-h-[36px] inline-flex items-center rounded-lg font-medium transition <?= $typeFilter === 'sembako' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' ?>">
                         Sembako
                     </a>
                 </div>
@@ -350,10 +410,75 @@ $events = $stmtEvents->fetchAll();
     </div>
 
     <!-- Section 2: Realisasi Penyaluran Santunan & Program Lapangan -->
-    <div class="bg-white rounded-xl shadow-2xs border border-stone-200/80 overflow-hidden">
-        <div class="p-5 sm:p-6 border-b border-stone-200/80">
-            <h2 class="text-base sm:text-lg font-semibold text-stone-900">Realisasi penyaluran santunan & program lapangan</h2>
-            <p class="text-xs text-stone-500 mt-0.5">Rekapitulasi sesi kegiatan penyaluran yang telah didistribusikan kepada warga dan binaan.</p>
+    <div id="realisasi-penyaluran" class="bg-white rounded-xl shadow-2xs border border-stone-200/80 overflow-hidden">
+        <div class="p-5 sm:p-6 border-b border-stone-200/80 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-base sm:text-lg font-semibold text-stone-900">Realisasi penyaluran santunan & program lapangan</h2>
+                <p class="text-xs text-stone-500 mt-0.5">
+                    Rekapitulasi sesi kegiatan penyaluran yang telah didistribusikan kepada warga dan binaan.
+                    <?php if (!empty($evSearchQuery) || ($evMonthFilter !== 'semua' && !empty($evMonthFilter)) || $evCatFilter !== 'semua'): ?>
+                        <span class="font-medium text-stone-700 ml-1">· Ditemukan <?= count($events) ?> sesi</span>
+                    <?php endif; ?>
+                </p>
+            </div>
+
+            <!-- Search Bar & Filters Realisasi Penyaluran (Bulan/Tahun, Kategori Program, Nama Acara) -->
+            <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 text-xs">
+                <form method="GET" action="<?= getBaseUrl() ?>/transparansi.php#realisasi-penyaluran" class="flex flex-wrap items-center gap-2">
+                    <!-- Pertahankan parameter filter tabel donasi kas di atas -->
+                    <input type="hidden" name="tipe" value="<?= htmlspecialchars($typeFilter) ?>">
+                    <input type="hidden" name="kategori" value="<?= htmlspecialchars($catFilter) ?>">
+                    <input type="hidden" name="bulan" value="<?= htmlspecialchars($monthFilter) ?>">
+                    <input type="hidden" name="q" value="<?= htmlspecialchars($searchQuery) ?>">
+
+                    <!-- 1. Filter Pilihan Bulan & Tahun Pelaksanaan -->
+                    <select name="ev_bulan" onchange="this.form.submit()" class="bg-white border border-stone-300 rounded-lg text-xs px-2.5 py-1.5 min-h-[36px] text-stone-700 focus:outline-none focus:border-bkrc-red-800 transition">
+                        <option value="semua">Semua bulan & tahun</option>
+                        <?php foreach ($availableEvMonths as $em): ?>
+                            <?php 
+                            $labelEvBln = ($namaBulan[$em['m']] ?? $em['m']) . ' ' . $em['y'];
+                            ?>
+                            <option value="<?= $em['ym'] ?>" <?= $evMonthFilter === $em['ym'] ? 'selected' : '' ?>>
+                                <?= $labelEvBln ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <!-- 2. Filter Kategori Program Penyaluran -->
+                    <select name="ev_kategori" onchange="this.form.submit()" class="bg-white border border-stone-300 rounded-lg text-xs px-2.5 py-1.5 min-h-[36px] text-stone-700 focus:outline-none focus:border-bkrc-red-800 transition">
+                        <option value="semua">Semua program</option>
+                        <?php foreach ($programCategories as $pk => $pl): ?>
+                            <option value="<?= $pk ?>" <?= $evCatFilter === $pk ? 'selected' : '' ?>>
+                                <?= $pl ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <!-- 3. Kotak Input Pencarian (Nama Acara / Lokasi / Penerima) -->
+                    <div class="relative flex-grow sm:flex-grow-0">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-stone-400 pointer-events-none">
+                            <i class="fa-solid fa-magnifying-glass text-[11px]"></i>
+                        </span>
+                        <input type="text" 
+                               name="ev_q" 
+                               value="<?= htmlspecialchars($evSearchQuery) ?>" 
+                               placeholder="Cari acara / peruntukan..." 
+                               class="pl-8 pr-3 py-1.5 min-h-[36px] w-full sm:w-44 md:w-52 bg-white border border-stone-300 rounded-lg text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-bkrc-red-800 transition">
+                    </div>
+
+                    <!-- Tombol Cari -->
+                    <button type="submit" class="bg-stone-900 hover:bg-stone-800 active:bg-black text-white font-medium px-3.5 py-1.5 min-h-[36px] rounded-lg text-xs transition flex items-center gap-1.5">
+                        <span>Cari</span>
+                    </button>
+
+                    <!-- Tombol Reset / Bersihkan Filter Realisasi -->
+                    <?php if (!empty($evSearchQuery) || ($evMonthFilter !== 'semua' && !empty($evMonthFilter)) || $evCatFilter !== 'semua'): ?>
+                        <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=<?= urlencode($typeFilter) ?>&kategori=<?= urlencode($catFilter) ?>&bulan=<?= urlencode($monthFilter) ?>&q=<?= urlencode($searchQuery) ?>#realisasi-penyaluran" class="bg-stone-100 hover:bg-stone-200 text-stone-600 font-medium px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs transition inline-flex items-center gap-1" title="Bersihkan pencarian & filter penyaluran">
+                            <i class="fa-solid fa-xmark text-[11px]"></i> Reset
+                        </a>
+                    <?php endif; ?>
+                </form>
+            </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -370,31 +495,52 @@ $events = $stmtEvents->fetchAll();
                 </thead>
                 <tbody class="divide-y divide-stone-100 text-stone-700">
                     <?php if (empty($events)): ?>
-                        <tr><td colspan="6" class="py-8 text-center text-stone-400">Belum ada sesi penyaluran tercatat.</td></tr>
+                        <tr>
+                            <td colspan="6" class="py-12 text-center text-stone-500">
+                                <i class="fa-solid fa-magnifying-glass text-2xl text-stone-300 mb-2 block"></i>
+                                Tidak ada data realisasi penyaluran yang cocok dengan pencarian atau filter Anda.
+                                <?php if (!empty($evSearchQuery) || ($evMonthFilter !== 'semua' && !empty($evMonthFilter)) || $evCatFilter !== 'semua'): ?>
+                                    <div class="mt-2">
+                                        <a href="<?= getBaseUrl() ?>/transparansi.php?tipe=<?= urlencode($typeFilter) ?>&kategori=<?= urlencode($catFilter) ?>&bulan=<?= urlencode($monthFilter) ?>&q=<?= urlencode($searchQuery) ?>#realisasi-penyaluran" class="text-bkrc-red-800 hover:underline font-medium text-xs">
+                                            &larr; Tampilkan seluruh data penyaluran
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
                     <?php else: ?>
                         <?php foreach ($events as $ev): ?>
                             <?php
                             $isTersalurkan = ($ev['disbursement_status'] === 'tersalurkan');
+                            $evCatBadges = [
+                                'santunan_yatim' => 'bg-blue-50 text-blue-800 border-blue-200',
+                                'sembako'        => 'bg-amber-50 text-amber-800 border-amber-200',
+                                'event'          => 'bg-purple-50 text-purple-800 border-purple-200',
+                                'pinjaman'       => 'bg-teal-50 text-teal-800 border-teal-200',
+                                'lainnya'        => 'bg-stone-100 text-stone-700 border-stone-200'
+                            ];
+                            $evBadgeClass = $evCatBadges[$ev['program_type']] ?? 'bg-stone-100 text-stone-700 border-stone-200';
+                            $evLabel = $programCategories[$ev['program_type']] ?? ucwords(str_replace('_', ' ', $ev['program_type']));
                             ?>
                             <tr class="hover:bg-stone-50/70 transition-colors duration-150">
                                 <td class="py-3 px-4 font-medium text-stone-900">
                                     <?= htmlspecialchars($ev['event_name']) ?>
                                     <?php if (!empty($ev['disbursed_to'])): ?>
-                                        <span class="block text-[11px] text-stone-500">Penerima/PIC: <?= htmlspecialchars($ev['disbursed_to']) ?></span>
+                                        <span class="block text-[11px] text-stone-500 font-normal">Penerima/PIC: <?= htmlspecialchars($ev['disbursed_to']) ?></span>
                                     <?php elseif (!empty($ev['notes'])): ?>
-                                        <span class="block text-[11px] text-stone-400"><?= htmlspecialchars($ev['notes']) ?></span>
+                                        <span class="block text-[11px] text-stone-400 font-normal"><?= htmlspecialchars($ev['notes']) ?></span>
                                     <?php endif; ?>
                                 </td>
                                 <td class="py-3 px-4 whitespace-nowrap text-stone-500"><?= formatTanggalIndo($ev['event_date']) ?></td>
-                                <td class="py-3 px-4">
-                                    <span class="text-xs text-stone-600 capitalize">
-                                        <?= str_replace('_', ' ', $ev['program_type']) ?>
+                                <td class="py-3 px-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border <?= $evBadgeClass ?>">
+                                        <?= $evLabel ?>
                                     </span>
                                 </td>
-                                <td class="py-3.5 px-4 font-semibold text-stone-900 tabular-nums text-right">
+                                <td class="py-3.5 px-4 font-semibold text-stone-900 tabular-nums text-right whitespace-nowrap">
                                     <?= formatRupiah($ev['total_cash_out']) ?>
                                 </td>
-                                <td class="py-3.5 px-4 font-semibold text-stone-900 tabular-nums text-right">
+                                <td class="py-3.5 px-4 font-semibold text-stone-900 tabular-nums text-right whitespace-nowrap">
                                     <?= $ev['total_packages_out'] > 0 ? number_format($ev['total_packages_out']) . ' Paket' : '–' ?>
                                 </td>
                                 <td class="py-3 px-4 text-center whitespace-nowrap">
