@@ -223,6 +223,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 $donors = $pdo->query("SELECT id, donor_code, full_name, phone, cluster_or_address, is_anonymous FROM donors ORDER BY full_name ASC")->fetchAll();
 $activeMembers = $pdo->query("SELECT id, member_code, full_name, phone, cluster_block FROM members WHERE status = 'aktif' ORDER BY full_name ASC")->fetchAll();
 
+// Ambil daftar tahun unik dari data transaksi donasi & iuran
+$stmtYears = $pdo->query("SELECT DISTINCT DATE_FORMAT(donation_date, '%Y') as yr FROM donations WHERE donation_date IS NOT NULL AND donation_date != '0000-00-00' ORDER BY yr DESC");
+$availableYears = $stmtYears->fetchAll(PDO::FETCH_COLUMN);
+$currentYear = date('Y');
+if (!in_array($currentYear, $availableYears)) {
+    $availableYears[] = $currentYear;
+}
+$availableYears = array_values(array_filter(array_unique($availableYears), fn($y) => !empty($y) && is_numeric($y)));
+rsort($availableYears);
+
 // Hitung Counter Status untuk Badge Tab
 $countPending = (int)$pdo->query("SELECT COUNT(*) FROM donations WHERE status = 'pending'")->fetchColumn();
 $countApproved = (int)$pdo->query("SELECT COUNT(*) FROM donations WHERE status = 'approved'")->fetchColumn();
@@ -235,6 +245,10 @@ $statusFilter = $_GET['status'] ?? 'semua';
 $catFilter = $_GET['kategori'] ?? 'semua';
 $typeFilter = $_GET['tipe'] ?? 'semua';
 $monthFilter = (int)($_GET['bulan'] ?? 0);
+$yearFilter = trim($_GET['tahun'] ?? 'semua');
+if ($yearFilter !== 'semua' && !ctype_digit($yearFilter)) {
+    $yearFilter = 'semua';
+}
 $search = trim($_GET['q'] ?? '');
 $page = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 15;
@@ -261,6 +275,11 @@ if ($typeFilter === 'uang' || $typeFilter === 'sembako') {
 if ($monthFilter >= 1 && $monthFilter <= 12) {
     $whereClauses[] = "MONTH(d.donation_date) = ?";
     $params[] = $monthFilter;
+}
+
+if ($yearFilter !== 'semua' && ctype_digit($yearFilter)) {
+    $whereClauses[] = "DATE_FORMAT(d.donation_date, '%Y') = ?";
+    $params[] = $yearFilter;
 }
 
 if (!empty($search)) {
@@ -374,14 +393,14 @@ require_once __DIR__ . '/includes/sidebar.php';
         <div class="bg-white p-2 rounded-2xl shadow-xs border border-slate-200 flex flex-wrap items-center justify-between gap-2">
             <div class="flex flex-wrap items-center gap-1.5">
                 <!-- Tab Semua -->
-                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=semua&kategori=<?= urlencode($catFilter) ?>&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&q=<?= urlencode($search) ?>" 
+                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=semua&kategori=<?= urlencode($catFilter) ?>&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" 
                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= $statusFilter === 'semua' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' ?>">
                     <span>Semua Transaksi</span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded-md <?= $statusFilter === 'semua' ? 'bg-slate-800 text-slate-200' : 'bg-slate-200 text-slate-700' ?>"><?= $countAll ?></span>
                 </a>
 
                 <!-- Tab Pending (Highlight Badge Merah jika ada yang menunggu verifikasi) -->
-                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=pending&kategori=<?= urlencode($catFilter) ?>&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&q=<?= urlencode($search) ?>" 
+                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=pending&kategori=<?= urlencode($catFilter) ?>&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" 
                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= $statusFilter === 'pending' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' ?>">
                     <i class="fa-solid fa-clock-rotate-left text-xs"></i>
                     <span>Menunggu Verifikasi</span>
@@ -393,7 +412,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                 </a>
 
                 <!-- Tab Approved -->
-                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=approved&kategori=<?= urlencode($catFilter) ?>&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&q=<?= urlencode($search) ?>" 
+                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=approved&kategori=<?= urlencode($catFilter) ?>&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" 
                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= $statusFilter === 'approved' ? 'bg-emerald-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' ?>">
                     <i class="fa-solid fa-circle-check text-xs"></i>
                     <span>Disetujui (Approved)</span>
@@ -401,14 +420,14 @@ require_once __DIR__ . '/includes/sidebar.php';
                 </a>
 
                 <!-- Tab Rejected -->
-                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=rejected&kategori=<?= urlencode($catFilter) ?>&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&q=<?= urlencode($search) ?>" 
+                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=rejected&kategori=<?= urlencode($catFilter) ?>&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" 
                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= $statusFilter === 'rejected' ? 'bg-rose-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' ?>">
                     <span>Ditolak</span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded-md <?= $statusFilter === 'rejected' ? 'bg-rose-800 text-rose-100' : 'bg-slate-200 text-slate-700' ?>"><?= $countRejected ?></span>
                 </a>
 
                 <!-- Tab Void -->
-                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=batal&kategori=<?= urlencode($catFilter) ?>&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&q=<?= urlencode($search) ?>" 
+                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=batal&kategori=<?= urlencode($catFilter) ?>&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" 
                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= $statusFilter === 'batal' ? 'bg-slate-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' ?>">
                     <span>Dibatalkan (Void)</span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded-md <?= $statusFilter === 'batal' ? 'bg-slate-800 text-slate-200' : 'bg-slate-200 text-slate-700' ?>"><?= $countVoid ?></span>
@@ -417,9 +436,9 @@ require_once __DIR__ . '/includes/sidebar.php';
 
             <!-- Filter Kategori (Donasi Sukarela vs Iuran Bulanan) -->
             <div class="inline-flex p-1 bg-slate-100 rounded-xl text-xs font-semibold">
-                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=semua&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&q=<?= urlencode($search) ?>" class="px-3 py-1.5 rounded-lg transition <?= $catFilter === 'semua' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900' ?>">Semua Kategori</a>
-                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=donasi&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&q=<?= urlencode($search) ?>" class="px-3 py-1.5 rounded-lg transition <?= $catFilter === 'donasi' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900' ?>">Donasi</a>
-                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=iuran&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&q=<?= urlencode($search) ?>" class="px-3 py-1.5 rounded-lg transition <?= $catFilter === 'iuran' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900' ?>">Iuran Bulanan</a>
+                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=semua&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" class="px-3 py-1.5 rounded-lg transition <?= $catFilter === 'semua' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900' ?>">Semua Kategori</a>
+                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=donasi&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" class="px-3 py-1.5 rounded-lg transition <?= $catFilter === 'donasi' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900' ?>">Donasi</a>
+                <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=iuran&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" class="px-3 py-1.5 rounded-lg transition <?= $catFilter === 'iuran' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900' ?>">Iuran Bulanan</a>
             </div>
         </div>
 
@@ -428,17 +447,19 @@ require_once __DIR__ . '/includes/sidebar.php';
             <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
                 <!-- Filter Jenis Uang / Sembako -->
                 <div class="inline-flex p-1 bg-slate-100 rounded-xl text-xs font-semibold">
-                    <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=<?= urlencode($catFilter) ?>&tipe=semua&bulan=<?= $monthFilter ?>&q=<?= urlencode($search) ?>" class="px-3 py-1.5 rounded-lg transition <?= $typeFilter === 'semua' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900' ?>">Semua Jenis</a>
-                    <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=<?= urlencode($catFilter) ?>&tipe=uang&bulan=<?= $monthFilter ?>&q=<?= urlencode($search) ?>" class="px-3 py-1.5 rounded-lg transition <?= $typeFilter === 'uang' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900' ?>">Uang Kas</a>
-                    <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=<?= urlencode($catFilter) ?>&tipe=sembako&bulan=<?= $monthFilter ?>&q=<?= urlencode($search) ?>" class="px-3 py-1.5 rounded-lg transition <?= $typeFilter === 'sembako' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900' ?>">Paket Sembako</a>
+                    <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=<?= urlencode($catFilter) ?>&tipe=semua&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" class="px-3 py-1.5 rounded-lg transition <?= $typeFilter === 'semua' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900' ?>">Semua Jenis</a>
+                    <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=<?= urlencode($catFilter) ?>&tipe=uang&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" class="px-3 py-1.5 rounded-lg transition <?= $typeFilter === 'uang' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900' ?>">Uang Kas</a>
+                    <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=<?= urlencode($catFilter) ?>&tipe=sembako&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" class="px-3 py-1.5 rounded-lg transition <?= $typeFilter === 'sembako' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900' ?>">Paket Sembako</a>
                 </div>
 
-                <!-- Filter Bulan -->
-                <form method="GET" class="inline-flex items-center">
+                <!-- Filter Periode (Bulan & Tahun) -->
+                <form method="GET" class="inline-flex flex-wrap items-center gap-1.5">
                     <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
                     <input type="hidden" name="kategori" value="<?= htmlspecialchars($catFilter) ?>">
                     <input type="hidden" name="tipe" value="<?= htmlspecialchars($typeFilter) ?>">
                     <input type="hidden" name="q" value="<?= htmlspecialchars($search) ?>">
+                    
+                    <!-- Pilihan Bulan -->
                     <select name="bulan" onchange="this.form.submit()" class="bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium rounded-xl px-3 py-1.5 min-h-[38px] focus:outline-none focus:ring-1 focus:ring-slate-400">
                         <option value="0">Semua Bulan</option>
                         <?php 
@@ -447,6 +468,20 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <option value="<?= $bNum ?>" <?= $monthFilter === $bNum ? 'selected' : '' ?>><?= $bName ?></option>
                         <?php endforeach; ?>
                     </select>
+
+                    <!-- Pilihan Tahun -->
+                    <select name="tahun" onchange="this.form.submit()" class="bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium rounded-xl px-3 py-1.5 min-h-[38px] focus:outline-none focus:ring-1 focus:ring-slate-400">
+                        <option value="semua">Semua Tahun</option>
+                        <?php foreach ($availableYears as $yr): ?>
+                            <option value="<?= htmlspecialchars($yr) ?>" <?= $yearFilter === (string)$yr ? 'selected' : '' ?>>Tahun <?= htmlspecialchars($yr) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <?php if ($monthFilter > 0 || $yearFilter !== 'semua' || !empty($search) || $catFilter !== 'semua' || $typeFilter !== 'semua'): ?>
+                        <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>" class="text-[11px] font-semibold text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-xl border border-rose-200 transition" title="Reset semua filter periode & pencarian">
+                            <i class="fa-solid fa-rotate-left mr-1"></i> Reset
+                        </a>
+                    <?php endif; ?>
                 </form>
             </div>
 
@@ -456,6 +491,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                 <input type="hidden" name="kategori" value="<?= htmlspecialchars($catFilter) ?>">
                 <input type="hidden" name="tipe" value="<?= htmlspecialchars($typeFilter) ?>">
                 <input type="hidden" name="bulan" value="<?= $monthFilter ?>">
+                <input type="hidden" name="tahun" value="<?= htmlspecialchars($yearFilter) ?>">
                 <div class="relative w-full">
                     <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Cari nama, kwitansi, nomor WA..." class="w-full pl-9 pr-3 py-2 min-h-[40px] bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
@@ -734,7 +770,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     </div>
                     <div class="flex items-center gap-1">
                         <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                            <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=<?= urlencode($catFilter) ?>&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&q=<?= urlencode($search) ?>&page=<?= $i ?>" 
+                            <a href="<?= getBaseUrl() ?>/admin/donations.php?status=<?= urlencode($statusFilter) ?>&kategori=<?= urlencode($catFilter) ?>&tipe=<?= urlencode($typeFilter) ?>&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>&page=<?= $i ?>" 
                                class="w-8 h-8 rounded-lg inline-flex items-center justify-center font-bold transition <?= $page === $i ? 'bg-slate-900 text-white' : 'hover:bg-slate-100 text-slate-700' ?>">
                                 <?= $i ?>
                             </a>
