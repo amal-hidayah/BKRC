@@ -199,9 +199,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Filter Status & Program
+// Filter Status, Program, Periode Bulan, Periode Tahun & Pencarian
 $statusFilter = $_GET['status'] ?? 'semua';
 $progFilter = $_GET['program'] ?? 'semua';
+$monthFilter = (int)($_GET['bulan'] ?? 0);
+$yearFilter = trim($_GET['tahun'] ?? 'semua');
+if ($yearFilter !== 'semua' && !ctype_digit($yearFilter)) {
+    $yearFilter = 'semua';
+}
+$search = trim($_GET['q'] ?? '');
+
+// Ambil daftar tahun unik dari agenda kegiatan penyaluran
+$stmtYears = $pdo->query("SELECT DISTINCT DATE_FORMAT(event_date, '%Y') as yr FROM distribution_events WHERE event_date IS NOT NULL AND event_date != '0000-00-00' ORDER BY yr DESC");
+$availableYears = $stmtYears->fetchAll(PDO::FETCH_COLUMN);
+$currentYear = date('Y');
+if (!in_array($currentYear, $availableYears)) {
+    $availableYears[] = $currentYear;
+}
+$availableYears = array_values(array_filter(array_unique($availableYears), fn($y) => !empty($y) && is_numeric($y)));
+rsort($availableYears);
+
+$bulanList = [
+    1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+    5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+    9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+];
 
 $whereClauses = ["1=1"];
 $params = [];
@@ -214,6 +236,23 @@ if (in_array($statusFilter, ['direncanakan', 'tersalurkan'])) {
 if (in_array($progFilter, ['santunan_yatim', 'sembako', 'event', 'pinjaman', 'lainnya'])) {
     $whereClauses[] = "e.program_type = ?";
     $params[] = $progFilter;
+}
+
+if ($monthFilter >= 1 && $monthFilter <= 12) {
+    $whereClauses[] = "MONTH(e.event_date) = ?";
+    $params[] = $monthFilter;
+}
+
+if ($yearFilter !== 'semua' && ctype_digit($yearFilter)) {
+    $whereClauses[] = "DATE_FORMAT(e.event_date, '%Y') = ?";
+    $params[] = $yearFilter;
+}
+
+if (!empty($search)) {
+    $whereClauses[] = "(e.event_name LIKE ? OR e.disbursed_to LIKE ? OR e.notes LIKE ?)";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
 }
 
 $whereSql = implode(" AND ", $whereClauses);
@@ -234,7 +273,8 @@ $eventsStmt->execute($params);
 $events = $eventsStmt->fetchAll();
 
 // Total Summary Keseluruhan
-$kasSummary = getKasSummary($pdo, date('Y'));
+$summaryYear = ($yearFilter !== 'semua' && ctype_digit($yearFilter)) ? (int)$yearFilter : date('Y');
+$kasSummary = getKasSummary($pdo, $summaryYear);
 $totalAnggaranDirencanakan = $kasSummary['dana_pending'] ?? 0;
 $totalRealisasiKeluar = $kasSummary['total_realisasi_keluar'] ?? 0;
 $totalSembakoKeluar = $kasSummary['total_sembako_tersalurkan'] ?? ($kasSummary['total_sembako_keluar'] ?? 0);
@@ -382,7 +422,10 @@ require_once __DIR__ . '/includes/sidebar.php';
                 <div class="text-xl font-extrabold text-slate-900 tabular-nums">
                     <?= count($events) ?> Sesi
                 </div>
-                <div class="text-[11px] text-slate-400 mt-1">Tahun Berjalan 2026</div>
+                <div class="text-[11px] text-slate-400 mt-1">
+                    <?= ($yearFilter !== 'semua') ? 'Tahun ' . htmlspecialchars($yearFilter) : 'Tahun Berjalan ' . date('Y') ?>
+                    <?= ($monthFilter > 0) ? ' • ' . $bulanList[$monthFilter] : '' ?>
+                </div>
             </div>
 
             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
@@ -390,7 +433,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                 <div class="text-xl font-extrabold text-amber-700 tabular-nums">
                     <?= formatRupiah($totalAnggaranDirencanakan) ?>
                 </div>
-                <div class="text-[11px] text-slate-400 mt-1">Belum memotong kas riil</div>
+                <div class="text-[11px] text-slate-400 mt-1">Belum memotong kas riil (<?= ($yearFilter !== 'semua') ? htmlspecialchars($yearFilter) : date('Y') ?>)</div>
             </div>
 
             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
@@ -398,7 +441,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                 <div class="text-xl font-extrabold text-emerald-700 tabular-nums">
                     <?= formatRupiah($totalRealisasiKeluar) ?>
                 </div>
-                <div class="text-[11px] text-slate-400 mt-1">Telah diserahkan / keluar kas</div>
+                <div class="text-[11px] text-slate-400 mt-1">Telah diserahkan / keluar kas (<?= ($yearFilter !== 'semua') ? htmlspecialchars($yearFilter) : date('Y') ?>)</div>
             </div>
 
             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
@@ -406,39 +449,78 @@ require_once __DIR__ . '/includes/sidebar.php';
                 <div class="text-xl font-extrabold text-slate-900 tabular-nums">
                     <?= number_format($totalSembakoKeluar) ?> Paket
                 </div>
-                <div class="text-[11px] text-slate-400 mt-1">Total terealisasi lapangan</div>
+                <div class="text-[11px] text-slate-400 mt-1">Total realisasi lapangan (<?= ($yearFilter !== 'semua') ? htmlspecialchars($yearFilter) : date('Y') ?>)</div>
             </div>
         </div>
 
-        <!-- Filter Bar -->
-        <div class="bg-white p-3.5 rounded-2xl shadow-xs border border-slate-200 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex flex-wrap items-center gap-1.5">
-                <a href="<?= getBaseUrl() ?>/admin/events.php?status=semua&program=<?= urlencode($progFilter) ?>" 
-                   class="px-3 py-1.5 rounded-xl text-xs font-bold transition <?= $statusFilter === 'semua' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' ?>">
-                    Semua Status
-                </a>
-                <a href="<?= getBaseUrl() ?>/admin/events.php?status=direncanakan&program=<?= urlencode($progFilter) ?>" 
-                   class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= $statusFilter === 'direncanakan' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' ?>">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Direncanakan
-                </a>
-                <a href="<?= getBaseUrl() ?>/admin/events.php?status=tersalurkan&program=<?= urlencode($progFilter) ?>" 
-                   class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= $statusFilter === 'tersalurkan' ? 'bg-emerald-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' ?>">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Tersalurkan
-                </a>
+        <!-- Filter Bar & Search Toolbar -->
+        <div class="bg-white p-3.5 rounded-2xl shadow-xs border border-slate-200 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Status Tabs -->
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <a href="<?= getBaseUrl() ?>/admin/events.php?status=semua&program=<?= urlencode($progFilter) ?>&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" 
+                       class="px-3 py-1.5 rounded-xl text-xs font-bold transition <?= $statusFilter === 'semua' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' ?>">
+                        Semua Status
+                    </a>
+                    <a href="<?= getBaseUrl() ?>/admin/events.php?status=direncanakan&program=<?= urlencode($progFilter) ?>&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" 
+                       class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= $statusFilter === 'direncanakan' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Direncanakan
+                    </a>
+                    <a href="<?= getBaseUrl() ?>/admin/events.php?status=tersalurkan&program=<?= urlencode($progFilter) ?>&bulan=<?= $monthFilter ?>&tahun=<?= urlencode($yearFilter) ?>&q=<?= urlencode($search) ?>" 
+                       class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 <?= $statusFilter === 'tersalurkan' ? 'bg-emerald-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' ?>">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Tersalurkan
+                    </a>
+                </div>
+
+                <!-- Form Filter (Kategori, Bulan, Tahun) -->
+                <form method="GET" class="inline-flex flex-wrap items-center gap-1.5">
+                    <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
+                    <input type="hidden" name="q" value="<?= htmlspecialchars($search) ?>">
+
+                    <!-- Pilihan Program -->
+                    <select name="program" onchange="this.form.submit()" class="bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium rounded-xl px-3 py-1.5 min-h-[38px] focus:outline-none focus:ring-1 focus:ring-slate-400">
+                        <option value="semua">Semua Program</option>
+                        <option value="santunan_yatim" <?= $progFilter === 'santunan_yatim' ? 'selected' : '' ?>>Santunan Yatim</option>
+                        <option value="sembako" <?= $progFilter === 'sembako' ? 'selected' : '' ?>>Bantuan Sembako</option>
+                        <option value="event" <?= $progFilter === 'event' ? 'selected' : '' ?>>Event Organisasi</option>
+                        <option value="pinjaman" <?= $progFilter === 'pinjaman' ? 'selected' : '' ?>>Pinjaman Qardhul Hasan</option>
+                        <option value="lainnya" <?= $progFilter === 'lainnya' ? 'selected' : '' ?>>Lainnya</option>
+                    </select>
+
+                    <!-- Pilihan Bulan -->
+                    <select name="bulan" onchange="this.form.submit()" class="bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium rounded-xl px-3 py-1.5 min-h-[38px] focus:outline-none focus:ring-1 focus:ring-slate-400">
+                        <option value="0">Semua Bulan</option>
+                        <?php foreach ($bulanList as $bNum => $bName): ?>
+                            <option value="<?= $bNum ?>" <?= $monthFilter === $bNum ? 'selected' : '' ?>><?= $bName ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <!-- Pilihan Tahun -->
+                    <select name="tahun" onchange="this.form.submit()" class="bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium rounded-xl px-3 py-1.5 min-h-[38px] focus:outline-none focus:ring-1 focus:ring-slate-400">
+                        <option value="semua">Semua Tahun</option>
+                        <?php foreach ($availableYears as $yr): ?>
+                            <option value="<?= htmlspecialchars($yr) ?>" <?= $yearFilter === (string)$yr ? 'selected' : '' ?>>Tahun <?= htmlspecialchars($yr) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <?php if ($monthFilter > 0 || $yearFilter !== 'semua' || !empty($search) || $progFilter !== 'semua' || $statusFilter !== 'semua'): ?>
+                        <a href="<?= getBaseUrl() ?>/admin/events.php" class="text-[11px] font-semibold text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-xl border border-rose-200 transition" title="Reset semua filter periode & pencarian">
+                            <i class="fa-solid fa-rotate-left mr-1"></i> Reset
+                        </a>
+                    <?php endif; ?>
+                </form>
             </div>
 
-            <!-- Filter Kategori Program -->
-            <form method="GET" class="flex items-center gap-2">
+            <!-- Pencarian Cepat Langsung -->
+            <form method="GET" class="w-full lg:w-72 relative flex items-center">
                 <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
-                <label class="text-xs text-slate-500 font-semibold">Kategori:</label>
-                <select name="program" onchange="this.form.submit()" class="bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium rounded-xl px-3 py-1.5 min-h-[38px] focus:outline-none focus:ring-1 focus:ring-slate-400">
-                    <option value="semua">Semua Program</option>
-                    <option value="santunan_yatim" <?= $progFilter === 'santunan_yatim' ? 'selected' : '' ?>>Santunan Yatim</option>
-                    <option value="sembako" <?= $progFilter === 'sembako' ? 'selected' : '' ?>>Bantuan Sembako</option>
-                    <option value="event" <?= $progFilter === 'event' ? 'selected' : '' ?>>Event Organisasi</option>
-                    <option value="pinjaman" <?= $progFilter === 'pinjaman' ? 'selected' : '' ?>>Pinjaman Qardhul Hasan</option>
-                    <option value="lainnya" <?= $progFilter === 'lainnya' ? 'selected' : '' ?>>Lainnya</option>
-                </select>
+                <input type="hidden" name="program" value="<?= htmlspecialchars($progFilter) ?>">
+                <input type="hidden" name="bulan" value="<?= $monthFilter ?>">
+                <input type="hidden" name="tahun" value="<?= htmlspecialchars($yearFilter) ?>">
+                <div class="relative w-full">
+                    <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Cari nama kegiatan / peruntukan..." class="w-full pl-9 pr-3 py-2 min-h-[40px] bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                </div>
             </form>
         </div>
 
@@ -462,6 +544,11 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 <td colspan="6" class="py-12 text-center text-slate-400">
                                     <i class="fa-solid fa-clipboard-list text-3xl mb-2 text-slate-300 block"></i>
                                     Belum ada kegiatan penyaluran yang sesuai filter.<br>
+                                    <?php if ($monthFilter > 0 || $yearFilter !== 'semua' || !empty($search) || $progFilter !== 'semua' || $statusFilter !== 'semua'): ?>
+                                        <a href="<?= getBaseUrl() ?>/admin/events.php" class="mt-3 mr-2 inline-flex items-center text-xs text-slate-700 font-bold bg-slate-100 px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-200 transition">
+                                            <i class="fa-solid fa-rotate-left mr-1.5"></i> Reset Filter
+                                        </a>
+                                    <?php endif; ?>
                                     <button @click="isEdit = false; modalOpen = true" class="mt-3 inline-flex items-center text-xs text-bkrc-red-800 font-bold bg-rose-50 px-3.5 py-2 rounded-xl border border-rose-200 hover:bg-rose-100 transition">
                                         Buat Agenda Penyaluran Baru
                                     </button>
