@@ -558,9 +558,9 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <?php foreach ($events as $ev): ?>
                                 <?php
                                 $isTersalurkan = ($ev['disbursement_status'] === 'tersalurkan');
+                                $totalRec = (int)($ev['total_recipients'] ?? 0);
+                                $distRec = (int)($ev['distributed_count'] ?? 0);
                                 $isChecklistType = ($totalRec > 0) || in_array($ev['program_type'], ['santunan_yatim', 'sembako']);
-                                $totalRec = (int)$ev['total_recipients'];
-                                $distRec = (int)$ev['distributed_count'];
                                 $pct = $totalRec > 0 ? round(($distRec / $totalRec) * 100) : ($isTersalurkan ? 100 : 0);
 
                                 // Category Badge formatting
